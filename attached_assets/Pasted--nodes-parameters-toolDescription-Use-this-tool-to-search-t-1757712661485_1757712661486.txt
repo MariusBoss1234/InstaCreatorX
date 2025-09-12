@@ -1,0 +1,842 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "toolDescription": "Use this tool to search the web. ",
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"query\": \"{searchTerm}\",\n  \"topic\": \"general\",\n  \"search_depth\": \"advanced\",\n  \"chunks_per_source\": 3,\n  \"max_results\": 1,\n  \"time_range\": null,\n  \"days\": 7,\n  \"include_answer\": true,\n  \"include_raw_content\": false,\n  \"include_images\": false,\n  \"include_image_descriptions\": false,\n  \"include_domains\": [],\n  \"exclude_domains\": []\n}",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "searchTerm",
+              "description": "What the user is searching for. "
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        -48,
+        384
+      ],
+      "id": "66f7a5ca-8705-438f-a276-07b3f11c91b4",
+      "name": "Tavily",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "cvKbWFI5v7UjG7xQ",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Post-Kernaussage: {{ $json.output }}\nInstagram-Format: {{ ($json.message?.text && $json.message.text.match(/\\|\\s*(feed|story|reel)\\b/i)) ? $json.message.text.match(/\\|\\s*(feed|story|reel)\\b/i)[1].toLowerCase() : 'feed' }}\nLayout: {{ (($json.message?.text && $json.message.text.match(/(Hero\\+Badge|Split-?Screen|Card-Grid)/i)) ? $json.message.text.match(/(Hero\\+Badge|Split-?Screen|Card-Grid)/i)[1] : 'Hero+Badge') }}\n\nHinweis: Ignorieren Sie lange Caption-Texte. Erzeugen Sie nur Headline/Subline/Badge gemäß Budgets.\n",
+        "options": {
+          "systemMessage": "====# Rolle\nSie erstellen einen präzisen Bildprompt für Instagram (Feed/Story/Reel). Ziel: moderne, redaktionelle Infografik/Metapher MIT MENSCHEN (professionell, freundlich). Kein Textwust.\n\n==# Harte Text-Budgets (on-image)\n- Max. Textblöcke: 3 (Headline, Subline, 1 Fact-Badge).\n- Feed 1:1 → gesamt ≤ 12 Wörter (H ≤3W, S ≤6W, B ≤2W).\n- Story/Reel 9:16 → gesamt ≤ 16 Wörter (H ≤3W, S ≤8W, B ≤3W).\n- Keine Fließtexte/Listen/„DM/Quelle/Hashtags“ auf dem Bild.\n\n==# Layout & Safe-Areas\n- Feed: 1080×1080, Safe-Area 72 px ringsum, Negativraum ≥ 60%.\n- Story/Reel: 1080×1920, Safe-Areas: oben 160 px, unten 220 px, seitlich 80 px.\n- TEXT NICHT über Gesichtern/Händen platzieren; Gesichter nie abschneiden.\n\n==# Stil & Elemente\n- Editorial, modern, minimal. Hierarchie: Headline > Subline > Badge.\n- Metaphern/Ikonen sparsam (z. B. Seide=Glättung, Tropfen=Hydration).\n- Badge: rund/soft, oben rechts. Palette: #D4AF37, #000000, #FFFFFF, neutrales Grau. Keine Logos/Nadeln/Blut/Vorher-Nachher.\n\n==# Menschen (MUSS)\n- Mind. 1 Person (Standard: 1–2).\n- Rollen: Behandler:in und/oder Patient:in (Beratungsszene oder Portrait).\n- Framing: Portrait/halbtotal/3/4; natürlicher Blick (on/off-camera).\n- Kleidung: smart-casual, dezent\n- Umgebung: Praxis/Studio/neutral; aufgeräumt, professionell.\n- Diversität berücksichtigen; keine realen Personen nachbilden.\n- Verboten: Nadeln, Blut, invasive Handlungen, Vorher/Nachher, Logos/Marken.\n\n==# Eingaben\n- Post-Kernaussage (aus Input)\n- Instagram-Format (feed|story|reel)\n- Layout (Hero+Badge|Split-Screen|Card-Grid)\n- Optional: People-Preset im Inputtext („People: ...“)\n\n==# OUTPUT (STRICT JSON ONLY)\nGeben Sie ausschließlich ein einzelnes JSON-Objekt zurück – ohne Code-Fences, ohne erläuternden Text davor oder danach. Beginnen Sie mit „{“ und enden Sie mit „}“.\n\nPflichtfelder und Typen:\n{\n  \\\"format\\\": \\\"feed|story|reel\\\",\n  \\\"layout\\\": \\\"Hero+Badge|Split-Screen|Card-Grid\\\",\n  \\\"headline\\\": \\\"string (≤3 Wörter)\\\",\n  \\\"subline\\\": \\\"string (≤6/8 Wörter je nach Format)\\\",\n  \\\"badge\\\": \\\"string (≤2/3 Wörter je nach Format)\\\",\n  \\\"metapher\\\": \\\"string\\\",\n  \\\"ikonen\\\": [\\\"string\\\", \\\"string\\\"],\n  \\\"palette\\\": [\\\"#D4AF37\\\", \\\"#000000\\\", \\\"#FFFFFF\\\"],\n  \\\"safeArea\\\": \\\"string\\\",\n  \\\"negativraum\\\": \\\"niedrig|mittel|hoch\\\",\n  \\\"doNot\\\": \\\"keine Quellen/DM/Hashtags auf dem Bild\\\",\n  \\\"people\\\": {\n    \\\"count\\\": 1|2|3,\n    \\\"roles\\\": [\\\"Expert:in\\\", \\\"Patient:in\\\"],\n    \\\"framing\\\": \\\"portrait|halbtotal|dreiviertel\\\",\n    \\\"gaze\\\": \\\"zur Kamera|off-camera\\\",\n    \\\"pose\\\": \\\"Portrait|Beratung|freundliches Gespräch\\\",\n    \\\"wardrobe\\\": \\\"Kittel|smart-casual\\\",\n    \\\"background\\\": \\\"Praxis|Studio|neutral\\\",\n    \\\"diversity\\\": true,\n    \\\"avoid\\\": [\\\"Nadeln\\\", \\\"Blut\\\", \\\"Vorher/Nachher\\\", \\\"Logos\\\"]\n  }\n}\n\nRegeln:\n- Wenn kein People-Preset erkennbar ist, setzen Sie einen sinnvollen Default: count=2, roles=[\\\"Expert:in\\\",\\\"Patient:in\\\"], framing=\\\"halbtotal\\\", gaze=\\\"off-camera\\\", pose=\\\"Beratung\\\", wardrobe=\\\"Kittel\\\", background=\\\"Praxis\\\".\n- Wenn Sie im Begriff sind, Text außerhalb des JSON zu schreiben, stoppen Sie und geben Sie nur das JSON-Objekt aus.\"\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        208,
+        48
+      ],
+      "id": "a8c0163d-59fc-473e-a96c-ea06b7eea14e",
+      "name": "Image Prompt Agent"
+    },
+    {
+      "parameters": {
+        "content": "# Content Generation",
+        "height": 260,
+        "width": 380
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        -48
+      ],
+      "id": "3159f9a8-5b76-406a-bab8-47cba04b75b4",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Tool & Model",
+        "height": 240,
+        "width": 380,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        320
+      ],
+      "id": "d8880827-4a6f-4491-9add-5e5fe242bea6",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -240,
+        400
+      ],
+      "id": "4a245b20-d3f5-4eae-8cb4-9a9966b253b6",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "Zw9jn30vhh7xHHwK",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -448,
+        944
+      ],
+      "id": "14d9dc7f-bcab-4fa8-b5bf-c9c8d2773bc3",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "Zw9jn30vhh7xHHwK",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -304,
+        592
+      ],
+      "id": "638e2834-26a2-44a1-887b-4ba13321fe7c",
+      "name": "Telegram",
+      "webhookId": "2bbfaf46-6ef2-4b9e-be45-285022586ae3",
+      "credentials": {
+        "telegramApi": {
+          "id": "P8EA77asbhxcQPkL",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "928fb989-7c93-41c0-a11f-645eecd3a51a",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "=post",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c1ef811a-53ab-4a29-81b1-a340310f1a00",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "=Post",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": "=",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -704,
+        352
+      ],
+      "id": "d4ad9ba8-7a54-44e0-b1cd-f110b8b3186e",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appgLpfHAtuBgYs2U",
+          "mode": "list",
+          "cachedResultName": "database_bilder",
+          "cachedResultUrl": "https://airtable.com/appgLpfHAtuBgYs2U"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblqbM0dMwylejuPg",
+          "mode": "list",
+          "cachedResultName": "passThrough",
+          "cachedResultUrl": "https://airtable.com/appgLpfHAtuBgYs2U/tblqbM0dMwylejuPg"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.id }}",
+            "Caption": "={{ $('Post Agent').item.json.output }}",
+            "url": "={{ $json.webContentLink.match(/[-\\w]{25,}/)[0] }}",
+            "Bild": "={{ (() => {\n     const m = $json.webContentLink.match(/[-\\w]{25,}/);\n     const url = m\n       ? `https://lh3.googleusercontent.com/d/${m[0]}=w1080-rj` // JPEG, 1080 px\n       : $json.webContentLink;                                  \n     return [ { url } ];\n   })() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Caption",
+              "displayName": "Caption",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Bild",
+              "displayName": "Bild",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        688,
+        2112
+      ],
+      "id": "4baba396-1284-4bd5-8705-7c09d389bc79",
+      "name": "Airtable",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "4smGf5NSRZuXl3oF",
+          "name": "Airtable Personal Access Token account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "root",
+          "cachedResultName": "/ (Root folder)"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        528,
+        2112
+      ],
+      "id": "d7d6e995-a2af-4bdc-be07-edef7f1f50c4",
+      "name": "Google Drive1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "1CTu0VZy9KsahB7R",
+          "name": "Google Drive account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1136,
+        336
+      ],
+      "id": "5731cbca-56a1-41db-98ff-f0f2490670d0",
+      "name": "Telegram Trigger",
+      "webhookId": "a173366e-6981-4f0e-b1ed-951e3bdd4690",
+      "credentials": {
+        "telegramApi": {
+          "id": "P8EA77asbhxcQPkL",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "==Thema: {{ $json.message.text.replace(/^\\s*(post|bild|img)\\s*/i,'').split('|')[0].trim() }}\nInstagram-Format: {{ ($json.message.text.match(/\\|\\s*(feed|story|reel)\\b/i) || [,'feed'])[1].toLowerCase() }}\nPost-Typ: {{ ($json.message.text.match(/\\|\\s*(cta|organic)\\b/i) || [,'organic'])[1].toLowerCase() }}\nVisuelles Konzept: {{ (($json.message.text.match(/(Hero\\+Badge|Split-?Screen|Card-Grid)/i) || [,''])[1] || '').trim() }}\nZielgruppe: Erwachsene (18–45), ästhetisch Interessierte, Einsteiger:innen\nHinweis: Halten Sie die Copy strikt IG-gerecht für das angegebene Format.\n",
+        "options": {
+          "systemMessage": "====# Rolle\nSie sind ein spezialisierter KI-Redakteur für ultrakurze, organische Instagram-Posts zur Ästhetischen Medizin (z. B. Botulinum, Hyaluron, Skinbooster, Peelings, Laser).\n\n==# Ziel\nEine postfähige Copy für IG (Feed/Story/Reel), sachlich-konservativ, ohne Heilversprechen oder Selbstbehandlungs-Tipps. „Sie“-Ansprache, deutsch.\n\n==# Eingaben\n- Thema: <aus Input>\n- Instagram-Format: <feed|story|reel>\n- Post-Typ: <cta|organic>\n- Visuelles Konzept: <Hero+Badge|Split-Screen|Card-Grid>\n\n==# Struktur (max. 400 Zeichen inkl. Leerzeichen)\n1) Hook: 1 sehr kurzer Satz.\n2) 2–3 Bulletpoints à max. 6 Wörter (Nutzen/Limitierungen/Sicherheit).\n3) Wenn Post-Typ=cta: 1 kurze CTA-Zeile (max. 6 Wörter, unaufdringlich, z. B. „Beratung vereinbaren.“). Wenn Post-Typ=organic: diese Zeile weglassen...\n4) Visuelles Konzept (nur Layout-Begriff: Hero+Badge | Split-Screen | Card-Grid).\nEmojis: max. 1. Keine Preise, keine Vorher/Nachher, keine Nadeln/Blut, keine Selbstbehandlung.\n5) People-Preset (kurz): z. B. „People: Einzel (Expert:in), Portrait, Blick zur Kamera“ oder „People: Duo (Expert:in+Patient:in), halbtotal, Gespräch“.\nEmojis: max. 1. Keine Preise, keine Vorher/Nachher, keine Nadeln/Blut, keine Selbstbehandlung.\n\n==# Tonalität nach Post-Typ\n- cta: diskret beratend, sanft verkaufsorientiert (kein Druck, keine Superlative).\n- organic: neutral-informativ, keine Aufforderungen/CTA.\n\n==# Instagram-Logik\n- Feed (1:1): nüchtern, klar; 0–1 Emoji; 3–5 Hashtags.\n- Story/Reel (9:16): extrem prägnant; sehr kurze Bullets; UI-Overlays oben/unten beachten.\n\n==# Recherche (konservativ)\nNutze Tavily tool\n\n==# Ausgabe-Regel\nNur die finale Post-Kopie in obiger Struktur. Keine Erklärungen, keine Platzhalter. Deutsch.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -272,
+        48
+      ],
+      "id": "c31964c4-3f7d-402e-bb24-fed03de4e204",
+      "name": "Post Agent"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "model": "gpt-image-1",
+        "prompt": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        528,
+        64
+      ],
+      "id": "f8ed14b9-b903-4558-a198-332075c4d55c",
+      "name": "Generate an image",
+      "credentials": {
+        "openAiApi": {
+          "id": "Zw9jn30vhh7xHHwK",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openRouterApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer $OPENROUTER_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"google/gemini-2.5-flash-image-preview\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": [\n        {\n          \"type\": \"text\",\n          \"text\": \"{{ $('Telegram Trigger').item.json.message.caption }}\"\n        },\n{\n          \"type\": \"image_url\",\n          \"image_url\": {\n            \"url\": \"{{ $json.data.link }}\"\n          }\n        }\n      ]\n    }\n  ]\n}\n\n",
+        "options": {}
+      },
+      "id": "ca841ad5-f9d4-4047-84f6-9b26cda29d30",
+      "name": "Nano Banana Image Processor",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -240,
+        -272
+      ],
+      "typeVersion": 4.2,
+      "credentials": {
+        "openRouterApi": {
+          "id": "0cmgzre0rsqvCvtx",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8ab542e1-3420-4774-b168-588d76590c68",
+              "name": "data",
+              "value": "={{ $json.choices[0].message.images[0].image_url.url }}",
+              "type": "string"
+            },
+            {
+              "id": "dec11c3f-8244-4815-b2fe-0d34b665cdff",
+              "name": "base",
+              "value": "={{ $json.choices[0].message.images[0].image_url.url.split(\"base64,\")[1] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -80,
+        -272
+      ],
+      "id": "f0cc5c44-66a4-4f4d-82d9-ed339280aa46",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "base",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        80,
+        -272
+      ],
+      "id": "df8d05a5-c37a-4a01-80d3-971e49007245",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "model": "deepseek/deepseek-r1:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        176,
+        320
+      ],
+      "id": "f5a12551-4bb0-48a0-b685-8927015cc1ae",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "0cmgzre0rsqvCvtx",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=# Hinweise an das Modell:\n- Generiere direkt 8 Post-Ideen.\n- Verteile die Formate ca. 70% Story/Feed, 30% Reel.\n- Visuelles Konzept unbedingt mit Layout-Begriff (Hero+Badge / Split-Screen / Card-Grid).\n- Fact-Badge nur seriös, sonst weglassen.\n- Hashtags generisch + themenspezifisch (3–5).\n",
+        "options": {
+          "systemMessage": "====# Rolle\nSie sind Content-Stratege für Instagram (Feed, Story, Reel) in der Ästhetischen Medizin (Hyaluron, Skinbooster etc.)\n\n==# Ziel\nErzeugen von konservativen, praxistauglichen **Post-Ideen** für IG, die direkt in Copy- und Bild-Prompts überführbar sind. Keine Heilversprechen, keine Preise, kein Vorher/Nachher, keine Nadeln/Blut, keine Selbstbehandlung.\n\n==# IG-Logik\n- Feed: 1:1, klar & faktisch.\n- Story/Reel: 9:16, extrem prägnant.\n\n==# Bausteine je Idee\nTitel | Format (feed/story/reel) | cta oder organic (wortwörtlich entweder cta oder organic)\n==# Ausgabeformat\n- Exakt 8 Zeilen, jede Zeile 1 Idee, Pipe-getrennt (|).\n- Keine Einleitung, keine Erklärungen.\n- Deutsch, prägnant, keine Platzhalter.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -624,
+        592
+      ],
+      "id": "4471dc29-8a8a-4b70-8f0c-72b0a478399b",
+      "name": "AI Agent (Post Vorschläge)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5a3a019b-75b3-4b08-9f8f-207c07ccd059",
+              "leftValue": "={{ $json.message.toJsonString() }}",
+              "rightValue": "photo",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -960,
+        336
+      ],
+      "id": "b5e3a179-5bfd-4d82-8ea6-c50960c98da3",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.photo[3].file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -608,
+        -272
+      ],
+      "id": "029b806e-0b38-4224-9acd-9f7016c44a11",
+      "name": "Get a file",
+      "webhookId": "0867c075-4a59-425f-9859-d75f0edb1116",
+      "credentials": {
+        "telegramApi": {
+          "id": "P8EA77asbhxcQPkL",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.imgur.com/3/image",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Client-ID 9cd018fe7c663ad"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -416,
+        -272
+      ],
+      "id": "ef9bbc90-3c69-4095-b930-dfb12ea6d054",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "binaryData": true,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        -272
+      ],
+      "id": "564d4ede-e52f-4ebd-bec8-639bcd735e5e",
+      "name": "Send a photo message",
+      "webhookId": "25a67d6f-be81-4cee-a28e-aa128aee8e63",
+      "credentials": {
+        "telegramApi": {
+          "id": "P8EA77asbhxcQPkL",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendPhoto",
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "binaryData": true,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        688,
+        64
+      ],
+      "id": "91f58556-591d-492e-97d1-3d60b612dae5",
+      "name": "Send a photo message1",
+      "webhookId": "25a67d6f-be81-4cee-a28e-aa128aee8e63",
+      "credentials": {
+        "telegramApi": {
+          "id": "P8EA77asbhxcQPkL",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Tavily": {
+      "ai_tool": [
+        [
+          {
+            "node": "Post Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image Prompt Agent": {
+      "main": [
+        [
+          {
+            "node": "Generate an image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Post Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent (Post Vorschläge)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent (Post Vorschläge)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Post Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive1": {
+      "main": [
+        [
+          {
+            "node": "Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Agent": {
+      "main": [
+        [
+          {
+            "node": "Image Prompt Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate an image": {
+      "main": [
+        [
+          {
+            "node": "Send a photo message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nano Banana Image Processor": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Send a photo message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Image Prompt Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent (Post Vorschläge)": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Get a file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Nano Banana Image Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a95f0c25504d0f061a94313f6d0229f661039a03920b6c1bee4ace78631946c4"
+  }
+}
