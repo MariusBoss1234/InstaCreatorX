@@ -126,9 +126,9 @@ Format: ${params.format === 'feed' ? '1:1 Quadrat' : '9:16 Hochformat'} für Ins
 
     while (retryCount < maxRetries) {
       try {
-        // IMPORTANT: only this gemini model supports image generation
+        // IMPORTANT: using nanobanana model for image generation
         response = await gemini.models.generateContent({
-          model: "gemini-2.0-flash-preview-image-generation",
+          model: "gemini-2.5-flash-image-preview",
           contents: [{ role: "user", parts: [{ text: enhancedPrompt }] }],
           config: {
             responseModalities: [Modality.TEXT, Modality.IMAGE],
