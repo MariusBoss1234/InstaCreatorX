@@ -1,0 +1,115 @@
+Beschreibung des Bildstils
+Bei dem von dir gezeigten Bild handelt es sich um eine professionelle Social-Media-Grafik im "Infotainment"-Stil. Man könnte es auch als Branded Educational Content (Marken-Bildungsinhalt) bezeichnen.
+
+Dieser Stil zeichnet sich durch folgende Merkmale aus:
+
+Kombination aus Foto und Design: Es ist kein reines Foto, sondern eine Komposition aus einem hochwertigen Porträt und grafischen Elementen (Text, Icons, Formen).
+
+Professionelle und vertrauenswürdige Ästhetik: Das Model (hier eine Frau im Laborkittel) strahlt Kompetenz und Nachdenklichkeit aus. Die gesamte Aufmachung ist sauber, modern und hochwertig.
+
+Klarer Informationsfokus: Der Text ("Fakt-Check", "Mythos oder Fakt?") macht sofort deutlich, dass hier Wissen vermittelt oder ein Mythos aufgeklärt wird. Das Ziel ist es, dem Betrachter einen Mehrwert zu bieten.
+
+Gezielte Bildsprache: Die Person schaut nicht direkt in die Kamera, sondern nachdenklich zur Seite, was Neugier weckt. Die Hand am Kinn ist eine klassische Geste des Überlegens.
+
+Minimalistisches Design: Der dunkle, einfarbige Hintergrund sorgt dafür, dass die Person und der Text im Mittelpunkt stehen und nichts ablenkt.
+
+Konsistente Markenfarben: Die Farbpalette ist auf wenige, harmonische Farben beschränkt (hier Schwarz, Weiß und Gold), was einen edlen und wiedererkennbaren Marken-Look erzeugt.
+
+Zusammenfassend ist es ein Stil, der für organische Posts ideal ist, weil er nicht wie plumpe Werbung wirkt, sondern Vertrauen aufbaut und die Zielgruppe durch nützliche Informationen an die Marke bindet.
+
+Prompt für die Erstellung ähnlicher Posts
+Die Erstellung eines solchen Posts erfolgt in der Regel in zwei Schritten: Zuerst wird das Basis-Foto erstellt (z.B. mit einer KI), und danach werden in einem Grafikprogramm (wie Canva, Adobe Express etc.) der Text und die Design-Elemente hinzugefügt.
+
+Schritt 1: Prompt für das Basis-Foto (für einen KI-Bildgenerator)
+Hier ist ein detaillierter Prompt, den du verwenden kannst. Es ist oft hilfreich, Prompts auf Englisch zu formulieren, da die meisten Modelle damit trainiert wurden.
+
+Prompt auf Englisch (empfohlen):
+
+High-quality studio portrait of a friendly and thoughtful female dermatologist in a white lab coat. She is looking slightly off-camera with a curious and engaging expression, her hand gently touching her chin. The lighting is soft and professional. The background is a solid, dark charcoal black, clean and minimalist. The image should look trustworthy, modern, and professional, suitable for a premium skincare brand's social media. Photorealistic, 8K resolution.
+Prompt auf Deutsch:
+
+Hochwertiges Studio-Porträt einer freundlichen und nachdenklichen Dermatologin in einem weißen Laborkittel. Sie schaut mit einem neugierigen und einnehmenden Ausdruck leicht an der Kamera vorbei, ihre Hand berührt sanft ihr Kinn. Die Beleuchtung ist weich und professionell. Der Hintergrund ist einfarbig, dunkel-anthrazit, sauber und minimalistisch. Das Bild soll vertrauenswürdig, modern und professionell wirken, passend für den Social-Media-Auftritt einer hochwertigen Hautpflegemarke. Fotorealistisch, 8K-Auflösung.
+Anpassungs-Möglichkeiten für den Prompt:
+
+Person: Tausche "female dermatologist" gegen "male scientist" (männlicher Wissenschaftler), "nutritionist" (Ernährungsberater) oder "thoughtful customer" (nachdenklicher Kunde) aus.
+
+Hintergrund: Ändere "dark charcoal black" zu einer anderen neutralen Markenfarbe wie "light grey" (hellgrau) oder "warm beige" (warmes Beige).
+
+Pose: Statt "hand gently touching her chin" könntest du "holding a test tube" (hält ein Reagenzglas) oder "looking at a diagram" (schaut auf ein Diagramm) verwenden.
+
+Schritt 2: Anleitung für Text & Design
+Nachdem du das Bild generiert hast, fügst du in einem Grafik-Tool deiner Wahl die folgenden Elemente hinzu:
+
+Headline-Box: Ein farblich abgesetztes Feld (z.B. in Gold) mit einem Schlagwort wie "FAKT-CHECK", "WISSEN TO-GO" oder "MYTHOS ENTHÜLLT".
+
+Haupt-Frage: Eine große, fette Überschrift, die eine Frage stellt (z.B. "MYTHOS ODER FAKT?").
+
+Thema: Nenne das konkrete Thema, um das es geht (z.B. "Hyaluron: Wasserspeicher und Tempowirkung").
+
+Icons & Grafiken: Füge 1-2 einfache, stilisierte Icons hinzu, die das Thema visuell unterstützen (wie der Tropfen und die Molekülstruktur im Beispiel).
+
+Branding: Achte darauf, durchgängig deine Marken-Schriftarten und -Farben zu verwenden, um einen hohen Wiedererkennungswert zu schaffen.
+
+
+So eine Grafik ist im Grunde ein Social-Media Fact-Check/Expert:innen-Post: minimalistisch, hoher Kontrast (schwarz + Akzentfarbe), großes Headline-Typography, iconische Piktos, Person im Laborkittel rechts, viel Negativraum links für Text. Wirkt redaktionell & „organisch“ statt werblich.
+
+Kurze Stilbeschreibung
+
+Kategorie: Fact-Check / Mythos-oder-Fakt Kachel-Post
+
+Look & Feel: clean, minimal, editorial; dunkler Hintergrund, Akzent in Gold/Beige; serifenlose, fette Headline
+
+Motiv: Halbporträt einer freundlichen Expertin/eines Experten, weiches Studiolicht, Blick leicht seitlich
+
+Komposition: Person rechts unten, links oben große Headline; einfache Vektor-Icons (Tropfen, Molekül), kleine Sprechblase/Callout
+
+Format: 1080×1350 (IG Portrait) oder 1080×1080; viel Rand/Negativraum
+
+Master-Prompt (mit Platzhaltern)
+
+Bild/Foto-Teil
+„Halbporträt einer {Expert:innenrolle, z. B. Dermatologin} in weißem Laborkittel, neutrales dunkles Studio-Setting, weiches frontales Licht, dezente Vignette, viel Negativraum links für Text, ruhiger schwarzer Hintergrund, freundlicher nachdenklicher Gesichtsausdruck, high-end editorial photography, sharp focus, 50 mm look, ––ar 4:5“
+
+Layout/Text-Teil (für Modelle, die saubere Typo können – sonst Text in Canva/Figma setzen):
+„Füge oben links eine große Headline hinzu: ‘FAKT-CHECK’ (Badge), darunter ‘MYTHOS ODER FAKT?’ (sehr groß, in Weiß). Subheadline in Akzentfarbe {#CDA76B}: ‘{Thema: z. B. Hyaluron: Wasserspeicher und Tempowirkung}’. Ergänze ein schlichtes Vektor-Icon {Beschreibung, z. B. goldener Tropfen + Molekül} links. Kleine Sprechblase mit Zitat: ‘{Kurzer Hook}’. Typografie: fette serifenlose Headline, klare Unterzeile, hoher Kontrast, viel Zeilenabstand. Markenfarbe {Hex} für Akzente. Kein Wasserzeichen, kein Stock-Logo.“
+
+(Bei Stable Diffusion o. ä. optionaler Negativ-Prompt: „blurry, watermark, oversaturated, busy background, distorted hands, low-res, artifacts“.)
+
+Fix-fertige Prompt-Vorlagen
+1) „Mythos oder Fakt?“ (wie dein Beispiel)
+
+„Halbporträt einer Dermatologin in weißem Kittel, neutraler schwarzer Hintergrund, weiches Studiolicht, Person rechts, viel Platz links. Editorial, clean, high-res.
+Layout: Badge ‘FAKT-CHECK’, sehr große Headline ‘MYTHOS ODER FAKT?’, Subheadline in Gold ‘Hyaluron: Wasserspeicher und Tempowirkung’, links schlichtes Vektor-Icon (goldener Tropfen + Molekül), kleine Sprechblase ‘Wie wüsste ich das nur zum Thema Wasserspeicher und Tempowirkung?’. Serifenlose, fette Typo, Weiß + Gold (#CDA76B), keine Logos, ––ar 4:5.“
+
+2) „3 schnelle Fakten“ (Karussell-Serie)
+
+„Halbporträt eines/er {Expert:in} mit ruhigem dunklem Hintergrund, Platz links für Text, soft light.
+Layout: Titel ‘3 FAKTEN ZU {Thema}’, Bullet-Piktos (einfarbig), kurze Statements (max. 6–8 Wörter), Weiß + {Markenfarbe}, klare Hierarchie, Rand großzügig, ––ar 4:5.“
+
+3) „Mythos vs. Fakt“ (Split-Kachel)
+
+„Studiofoto {Expert:in} rechts unten, dunkler Hintergrund, clean.
+Layout: geteilte Fläche links: oben ‘MYTHOS: {kurzer Mythos}’ (Badge), unten ‘FAKT: {knappe Korrektur}’. Minimalistische Icons, Weiß/Grau/Gold, große fette Headline, ––ar 1:1.“
+
+4) „Tipp des Tages“
+
+„Porträt {Expert:in} mit dezentem Lächeln, dunkler Hintergrund, viel Negativraum links.
+Layout: Badge ‘TIPP’, Headline ‘{1 Satz Nutzenversprechen}’, darunter 1–2 kurze Zeilen. Ein schlichtes thematisches Icon. Weiß + {Markenfarbe}, ––ar 4:5.“
+
+Beispiel ausgefüllt (dein Motiv)
+
+„Halbporträt einer freundlichen Dermatologin in weißem Kittel, dunkles Studio, Person rechts, weiches Licht, viel Platz links, editorial, high-res, ––ar 4:5.
+Layout: Badge ‘FAKT-CHECK’, Headline sehr groß ‘MYTHOS ODER FAKT?’, Subheadline in Gold ‘Hyaluron: Wasserspeicher und Tempowirkung’, Icon: goldener Tropfen + Molekül links, kleine Sprechblase ‘Wie wüsste ich das nur zum Thema Wasserspeicher und Tempowirkung?’. Typo: fette serifenlose, Weiß + Gold (#CDA76B). Kein Wasserzeichen.“
+
+Praxis-Tipps für organische Posts
+
+Text super kurz (Hook ≤ 6 Wörter, Subline ≤ 10–12).
+
+Serienformat beibehalten (gleiche Farben, Typo, Iconstil).
+
+Format: 4:5 für Reichweite auf IG; poste als Karussell (Slide 1 Hook, Slide 2–3 Inhalte, letzter Slide CTA/Quelle).
+
+Alt-Text: „Porträt einer Dermatologin vor schwarzem Hintergrund mit Fact-Check-Überschrift.“
+
+Wenn du magst, sag mir Thema + Markenfarben + Rolle (z. B. „gold/sand“, „Dermatologin“), dann schreibe ich dir direkt 3 maßgeschneiderte Prompts inkl. Caption-Vorschlägen.
+
