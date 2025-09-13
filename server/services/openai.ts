@@ -91,7 +91,12 @@ import { GoogleGenAI, Modality } from "@google/genai";
 import * as fs from "fs";
 import * as path from "path";
 
-const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+// Use GOOGLE_API_KEY as provided by user
+const googleApiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || "";
+if (!googleApiKey) {
+  console.error("No Google API key found. Please set GOOGLE_API_KEY environment variable.");
+}
+const gemini = new GoogleGenAI({ apiKey: googleApiKey });
 
 export async function generateImage(params: ImageGenerationParams): Promise<string> {
   const enhancedPrompt = `${params.prompt}
