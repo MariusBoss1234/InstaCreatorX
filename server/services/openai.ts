@@ -152,7 +152,12 @@ Generate image, not text.`;
         messages: [
           {
             role: "user",
-            content: prompt
+            content: [
+              {
+                type: "text",
+                text: prompt
+              }
+            ]
           }
         ]
       })
@@ -178,6 +183,10 @@ Generate image, not text.`;
 
     const data = await response.json();
     console.log("OpenRouter response received");
+    console.log("Response keys:", Object.keys(data));
+    console.log("Choices length:", data.choices?.length);
+    console.log("First choice keys:", data.choices?.[0] ? Object.keys(data.choices[0]) : "no first choice");
+    console.log("Message keys:", data.choices?.[0]?.message ? Object.keys(data.choices[0].message) : "no message");
     
     const endTime = Date.now();
     console.log(`OpenRouter image generation completed in ${endTime - startTime}ms`);
@@ -189,8 +198,43 @@ Generate image, not text.`;
     }
 
     const content = choice.message?.content;
+    const images = choice.message?.images;
+    console.log("Content found:", !!content, typeof content);
+    console.log("Images found:", !!images, Array.isArray(images) ? images.length : 'not array');
+    
+    // For Gemini image generation, check the images field first
+    if (images && Array.isArray(images) && images.length > 0) {
+      console.log("Using images field from Gemini response");
+      const firstImage = images[0];
+      console.log("First image type:", typeof firstImage);
+      console.log("First image keys:", firstImage && typeof firstImage === 'object' ? Object.keys(firstImage) : 'not object');
+      
+      if (firstImage && typeof firstImage === 'object' && firstImage.image_url) {
+        console.log("image_url type:", typeof firstImage.image_url);
+        console.log("image_url keys:", typeof firstImage.image_url === 'object' ? Object.keys(firstImage.image_url) : 'not object');
+      }
+      
+      // Handle different image formats
+      if (typeof firstImage === 'string' && firstImage.startsWith('data:image/')) {
+        return firstImage;
+      } else if (firstImage && typeof firstImage === 'object') {
+        // Could be an object with url, data, or other fields
+        if (firstImage.url && typeof firstImage.url === 'string') {
+          return firstImage.url;
+        } else if (firstImage.data && typeof firstImage.data === 'string') {
+          return firstImage.data;
+        } else if (firstImage.image_url && typeof firstImage.image_url === 'string') {
+          return firstImage.image_url;
+        } else if (firstImage.image_url && typeof firstImage.image_url === 'object' && firstImage.image_url.url) {
+          console.log("Found nested image_url.url:", typeof firstImage.image_url.url);
+          return firstImage.image_url.url;
+        }
+      }
+    }
+
+    // Fallback to content field
     if (!content) {
-      throw new Error("No content in response");
+      throw new Error("No content or images in response");
     }
 
     // Look for base64 image data in the response
