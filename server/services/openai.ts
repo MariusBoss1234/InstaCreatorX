@@ -93,7 +93,7 @@ import * as path from "path";
 // OpenRouter API configuration
 const rawOpenrouterApiKey = process.env.OPENROUTER_API_KEY || "";
 if (!rawOpenrouterApiKey) {
-  console.error("No OpenRouter API key found. Please set OPENROUTER_API_KEY environment variable.");
+  throw new Error("OPENROUTER_API_KEY environment variable is not set. Please provide your OpenRouter API key.");
 }
 
 // Clean API key - replace Unicode dashes with ASCII hyphens and validate ASCII
@@ -111,62 +111,192 @@ function assertAscii(name: string, value: string) {
   }
 }
 
-// Validate API key is ASCII
-if (openrouterApiKey) {
-  try {
-    assertAscii('OPENROUTER_API_KEY', openrouterApiKey);
-  } catch (error) {
-    console.error("API key validation failed:", error);
-  }
-}
+// Validate API key is ASCII - hard fail if invalid
+assertAscii('OPENROUTER_API_KEY', openrouterApiKey);
+console.log("OpenRouter API key loaded:", openrouterApiKey.substring(0, 6) + "...");
 
 export async function generateImage(params: ImageGenerationParams): Promise<string> {
-  const prompt = `Professionelle ästhetische Medizin Praxis: ${params.prompt}
+  const prompt = `Create a visual image (no text description): ${params.prompt}
 
-Stil-Anforderungen:
-- Moderne Praxis-/Klinikumgebung für ästhetische Medizin
-- Hochwertige, redaktionelle Fotografie
-- Weiches, natürliches Licht
-- Professionelle Menschen in sauberen, modernen Umgebungen
-- Keine medizinischen Instrumente, Nadeln oder invasive Verfahren sichtbar
-- Fokus auf Wellness und Schönheitsverbesserung
-- Farben: warme, professionelle Töne
-- Komposition geeignet für Instagram ${params.format} Format
-- Mit Menschen: mindestens 1 Person (Expert:in und/oder Patient:in)
-- Keine Logos, keine Markennamen, photorealistisch
+IMPORTANT: Please generate an actual image file, not a text description.
 
-Format: ${params.format === 'feed' ? '1:1 Quadrat' : '9:16 Hochformat'} für Instagram ${params.format}`;
+Style requirements:
+- Modern medical practice/clinic environment for aesthetic medicine  
+- High-quality, editorial photography
+- Soft, natural lighting
+- Professional people in clean, modern environments
+- No medical instruments, needles or invasive procedures visible
+- Focus on wellness and beauty enhancement
+- Colors: warm, professional tones
+- Composition suitable for Instagram ${params.format} format
+- With people: at least 1 person (expert and/or patient)
+- No logos, no brand names, photorealistic
+
+Format: ${params.format === 'feed' ? '1:1 square' : '9:16 portrait'} for Instagram ${params.format}
+
+Generate image, not text.`;
 
   try {
-    console.log("Starting OpenAI DALL-E image generation");
+    console.log("Starting OpenRouter Nanobanana image generation");
     const startTime = Date.now();
 
-    const response = await openai.images.generate({
-      model: "dall-e-3",
-      prompt: prompt,
-      n: 1,
-      size: params.format === 'feed' ? "1024x1024" : "1024x1792",
-      quality: "standard",
-      response_format: "url",
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${openrouterApiKey}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image-preview",
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      })
     });
 
+    console.log("OpenRouter response status:", response.status);
+    console.log("OpenRouter response redirected:", response.redirected);
+    console.log("OpenRouter response URL:", response.url);
+    console.log("OpenRouter response content-type:", response.headers.get('content-type'));
+    
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const htmlText = await response.text();
+      console.error("OpenRouter returned non-JSON response (likely HTML):", htmlText.substring(0, 500));
+      throw new Error(`OpenRouter returned non-JSON response: ${contentType}. This usually means API key issues or wrong endpoint.`);
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("OpenRouter API error:", response.status, errorText);
+      throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log("OpenRouter response received");
+    
     const endTime = Date.now();
-    console.log(`OpenAI image generation completed in ${endTime - startTime}ms`);
+    console.log(`OpenRouter image generation completed in ${endTime - startTime}ms`);
 
-    const imageUrl = response.data[0]?.url;
-    if (!imageUrl) {
-      throw new Error("No image URL received from OpenAI");
+    // Check for images in the response (Nanobanana returns images differently)
+    const choice = data.choices?.[0];
+    if (!choice) {
+      throw new Error("No choices in response");
     }
 
-    console.log("OpenAI image URL received");
-
-    // Download the image and save it locally
-    const imageResponse = await fetch(imageUrl);
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to download generated image: ${imageResponse.status}`);
+    const content = choice.message?.content;
+    if (!content) {
+      throw new Error("No content in response");
     }
 
-    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    // Look for base64 image data in the response
+    let imageData = null;
+    
+    console.log("OpenRouter response content type:", typeof content);
+    console.log("OpenRouter response content length:", content?.length || 0);
+    
+    // Check if the response has parts/content with images (new format)
+    if (Array.isArray(content)) {
+      console.log("Content is array, checking for image parts");
+      for (const part of content) {
+        if (part?.type === 'image' || part?.type === 'output_image') {
+          console.log("Found image type part:");
+          console.log("- image_url type:", typeof part.image_url);
+          console.log("- image_url keys:", part.image_url ? Object.keys(part.image_url) : 'null');
+          console.log("- image_url.url exists:", !!part.image_url?.url);
+          console.log("- image_url.url type:", typeof part.image_url?.url);
+          console.log("- image_url.url preview:", part.image_url?.url ? part.image_url.url.substring(0, 50) + "..." : 'null');
+          
+          // Handle different image part formats
+          if (part.source?.data) {
+            imageData = part.source.data;
+            console.log("Found image in source.data");
+            break;
+          } else if (part.image_url) {
+            // Handle when image_url is an object with url property
+            if (typeof part.image_url === 'object' && part.image_url.url) {
+              const url = part.image_url.url;
+              console.log("Checking URL format:", url.substring(0, 50));
+              // Extract base64 data after comma for data URLs
+              if (url.includes('data:image') && url.includes(',')) {
+                imageData = url.split(',')[1];
+                console.log("Successfully extracted base64 data from image_url object");
+                break;
+              } else if (url.startsWith('data:image')) {
+                imageData = url.split(',')[1];
+                console.log("Successfully extracted image_url object with URL");
+                break;
+              }
+            }
+            // Handle when image_url is a string
+            else if (typeof part.image_url === 'string' && part.image_url.startsWith('data:image')) {
+              imageData = part.image_url.split(',')[1];
+              console.log("Found image_url string");
+              break;
+            }
+          } else if (part.data) {
+            imageData = part.data;
+            console.log("Found image data directly in part");
+            break;
+          }
+        }
+      }
+    }
+    
+    // Check the message content for direct content
+    if (!imageData && typeof content === 'string') {
+      // Check if content is a pure base64 string (looks like image data)
+      if (content.length > 1000 && /^[A-Za-z0-9+\/]+(=|==)?$/.test(content)) {
+        // This looks like pure base64 image data
+        imageData = content;
+        console.log("Found pure base64 image data");
+      } else {
+        // Look for data URL format
+        const base64Match = content.match(/data:image\/[^;]+;base64,([A-Za-z0-9+\/=]+)/);
+        if (base64Match) {
+          imageData = base64Match[1];
+          console.log("Found data URL format image");
+        }
+      }
+    }
+    
+    // Check the response parts array directly if content check didn't work
+    if (!imageData && data.choices?.[0]?.message?.parts) {
+      console.log("Checking message parts for image data");
+      const parts = data.choices[0].message.parts;
+      for (const part of parts) {
+        if (part?.image_url && typeof part.image_url === 'object' && part.image_url.url) {
+          const url = part.image_url.url;
+          if (url.startsWith('data:image')) {
+            imageData = url.split(',')[1];
+            console.log("Found image in parts array");
+            break;
+          }
+        }
+      }
+    }
+
+    if (!imageData) {
+      console.error("No image data found. Response structure:", JSON.stringify({
+        hasContent: !!content,
+        contentType: typeof content,
+        isArray: Array.isArray(content),
+        contentLength: content?.length,
+        hasParts: !!data.choices?.[0]?.message?.parts,
+        partsLength: data.choices?.[0]?.message?.parts?.length,
+        firstPartType: data.choices?.[0]?.message?.parts?.[0]?.type,
+        preview: content?.substring ? content.substring(0, 100) + "..." : content
+      }, null, 2));
+      throw new Error("No image data found in response - the model may have returned text instead of an image");
+    }
+
+    console.log("Image data extracted successfully");
+
+    const imageBuffer = Buffer.from(imageData, 'base64');
     
     // Save image to attached_assets directory
     const timestamp = Date.now();
@@ -186,7 +316,7 @@ Format: ${params.format === 'feed' ? '1:1 Quadrat' : '9:16 Hochformat'} für Ins
     return `/attached_assets/generated_images/${filename}`;
 
   } catch (error) {
-    console.error("Error generating image with OpenAI:", error);
+    console.error("Error generating image with OpenRouter Nanobanana:", error);
     throw new Error("Failed to generate image");
   }
 }
