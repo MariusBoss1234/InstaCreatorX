@@ -142,3 +142,17 @@ export function useCheckJobStatus(jobId: string, enabled = true) {
     },
   });
 }
+
+export function useDeleteUploadedImage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (imageId: string): Promise<{ success: boolean; message: string }> => {
+      const response = await apiRequest("DELETE", `/api/uploads/${imageId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/uploads"] });
+    },
+  });
+}

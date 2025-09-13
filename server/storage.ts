@@ -18,6 +18,7 @@ export interface IStorage {
   getUploadedImages(limit?: number): Promise<UploadedImage[]>;
   getUploadedImageById(id: string): Promise<UploadedImage | undefined>;
   updateUploadedImage(id: string, updates: Partial<UploadedImage>): Promise<UploadedImage | undefined>;
+  deleteUploadedImage(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -109,6 +110,10 @@ export class MemStorage implements IStorage {
     const updated = { ...existing, ...updates };
     this.uploadedImages.set(id, updated);
     return updated;
+  }
+
+  async deleteUploadedImage(id: string): Promise<boolean> {
+    return this.uploadedImages.delete(id);
   }
 }
 

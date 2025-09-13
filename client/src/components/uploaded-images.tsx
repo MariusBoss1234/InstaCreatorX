@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { Eye, Edit3, Loader2, X } from "lucide-react";
+import { Eye, Edit3, Loader2, X, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useUploadedImages, useModifyImage, useCheckJobStatus } from "@/hooks/use-image-generation";
+import { useUploadedImages, useModifyImage, useCheckJobStatus, useDeleteUploadedImage } from "@/hooks/use-image-generation";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import type { UploadedImage } from "@/types";
@@ -20,6 +20,7 @@ export default function UploadedImages() {
 
   const { data: uploadedImagesResponse, isLoading, error } = useUploadedImages();
   const modifyImage = useModifyImage();
+  const deleteImage = useDeleteUploadedImage();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -78,6 +79,24 @@ export default function UploadedImages() {
     setShowModifyDialog(true);
   };
 
+  const handleDeleteClick = async (image: UploadedImage) => {
+    if (window.confirm(`Möchten Sie das Bild wirklich löschen?`)) {
+      try {
+        await deleteImage.mutateAsync(image.id);
+        toast({
+          title: "Bild gelöscht",
+          description: "Das Bild wurde erfolgreich gelöscht.",
+        });
+      } catch (error) {
+        toast({
+          title: "Fehler beim Löschen",
+          description: "Das Bild konnte nicht gelöscht werden.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   const handleModifySubmit = async () => {
     if (!selectedImage || !modificationPrompt.trim()) return;
 
@@ -90,11 +109,50 @@ export default function UploadedImages() {
       });
 
       if (result.success) {
-        setCurrentJobId(result.jobId);
         setShowModifyDialog(false);
+        
+        if (result.status === "completed") {
+          // Image was processed immediately - refresh the cache
+          queryClient.invalidateQueries({ queryKey: ["/api/uploads"] });
+          
+          // Show success message
+          toast({
+            title: "Bildbearbeitung abgeschlossen",
+            description: "Ihr Bild wurde erfolgreich bearbeitet.",
+          });
+          
+          // Update selected image if it's open in preview
+          if (selectedImage) {
+            // Trigger refetch and wait for new data
+            await queryClient.refetchQueries({ queryKey: ["/api/uploads"] });
+            
+            // Get the updated data directly from the query cache
+            const cachedData = queryClient.getQueryData(["/api/uploads", undefined]) as any;
+            const updatedImage = cachedData?.images?.find((img: any) => img.id === selectedImage.id);
+            if (updatedImage) {
+              setSelectedImage(updatedImage);
+            }
+          }
+        } else if (result.status === "failed") {
+          // Show failure message immediately
+          toast({
+            title: "Bildbearbeitung fehlgeschlagen",
+            description: "Die Bildbearbeitung konnte nicht abgeschlossen werden.",
+            variant: "destructive",
+          });
+        } else {
+          // Fallback for processing status (shouldn't happen with synchronous OpenRouter)
+          setCurrentJobId(result.jobId);
+          toast({
+            title: "Bildmodifikation gestartet",
+            description: "Ihr Bild wird bearbeitet...",
+          });
+        }
+      } else {
         toast({
-          title: "Bildmodifikation gestartet",
-          description: "Ihr Bild wird mit Nanobanana bearbeitet. Dies kann einige Minuten dauern.",
+          title: "Fehler",
+          description: "Bildmodifikation fehlgeschlagen. Bitte versuchen Sie es erneut.",
+          variant: "destructive",
         });
       }
     } catch (error) {
@@ -178,6 +236,20 @@ export default function UploadedImages() {
                     aria-label="Bild bearbeiten"
                   >
                     <Edit3 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleDeleteClick(image)}
+                    data-testid={`button-delete-${image.id}`}
+                    aria-label="Bild löschen"
+                    disabled={deleteImage.isPending}
+                  >
+                    {deleteImage.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
                   </Button>
                 </div>
               </div>

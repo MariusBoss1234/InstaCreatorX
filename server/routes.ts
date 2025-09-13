@@ -187,16 +187,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         params.modifications
       );
 
-      // Update stored image with job ID
-      await storage.updateUploadedImage(params.imageId, {
+      // Update stored image with job ID and modified URL if completed
+      const updateData: any = {
         nanobananaJobId: result.jobId,
         modifications: { ...(uploadedImage.modifications || {}), ...params.modifications },
-      });
+      };
+
+      // If modification completed immediately (synchronous), save the modified URL
+      if (result.status === "completed" && result.modifiedImageUrl) {
+        updateData.modifiedUrl = result.modifiedImageUrl;
+      }
+
+      await storage.updateUploadedImage(params.imageId, updateData);
 
       res.json({ 
         success: true, 
         jobId: result.jobId,
-        status: result.status 
+        status: result.status,
+        modifiedImageUrl: result.modifiedImageUrl
       });
     } catch (error) {
       console.error("Error modifying image:", error);
@@ -235,6 +243,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false, 
         error: error instanceof Error ? error.message : "Failed to check job status" 
+      });
+    }
+  });
+
+  // Delete uploaded image
+  app.delete("/api/uploads/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteUploadedImage(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ 
+          success: false, 
+          error: "Image not found" 
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        message: "Image deleted successfully" 
+      });
+    } catch (error) {
+      console.error("Error deleting uploaded image:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : "Failed to delete image" 
       });
     }
   });
