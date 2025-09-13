@@ -86,23 +86,44 @@ export interface ImageGenerationParams {
   format: "feed" | "story" | "reel";
 }
 
-// Using Google Gemini for image generation as requested
-import { GoogleGenAI, Modality } from "@google/genai";
+// Using OpenRouter for image generation as requested
 import * as fs from "fs";
 import * as path from "path";
 
-// Use GOOGLE_API_KEY as provided by user
-const googleApiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || "";
-if (!googleApiKey) {
-  console.error("No Google API key found. Please set GOOGLE_API_KEY environment variable.");
+// OpenRouter API configuration
+const rawOpenrouterApiKey = process.env.OPENROUTER_API_KEY || "";
+if (!rawOpenrouterApiKey) {
+  console.error("No OpenRouter API key found. Please set OPENROUTER_API_KEY environment variable.");
 }
-const gemini = new GoogleGenAI({ apiKey: googleApiKey });
+
+// Clean API key - replace Unicode dashes with ASCII hyphens and validate ASCII
+const openrouterApiKey = rawOpenrouterApiKey
+  .replace(/[\u2013\u2014]/g, '-') // Replace en-dash and em-dash with hyphen
+  .trim();
+
+// Validate that all characters are ASCII
+function assertAscii(name: string, value: string) {
+  if (!/^[\x00-\x7F]*$/.test(value)) {
+    const badChar = [...value].find(c => c.codePointAt(0)! > 127);
+    const codePoint = badChar ? badChar.codePointAt(0)!.toString(16) : 'unknown';
+    console.error(`${name} contains non-ASCII character U+${codePoint} '${badChar}'. Please re-enter using plain ASCII characters.`);
+    throw new Error(`${name} contains non-ASCII characters. Please re-enter the key with plain ASCII characters only.`);
+  }
+}
+
+// Validate API key is ASCII
+if (openrouterApiKey) {
+  try {
+    assertAscii('OPENROUTER_API_KEY', openrouterApiKey);
+  } catch (error) {
+    console.error("API key validation failed:", error);
+  }
+}
 
 export async function generateImage(params: ImageGenerationParams): Promise<string> {
-  const enhancedPrompt = `${params.prompt}
+  const prompt = `Professionelle ästhetische Medizin Praxis: ${params.prompt}
 
 Stil-Anforderungen:
-- Professionelle, saubere Ästhetik
 - Moderne Praxis-/Klinikumgebung für ästhetische Medizin
 - Hochwertige, redaktionelle Fotografie
 - Weiches, natürliches Licht
@@ -117,98 +138,79 @@ Stil-Anforderungen:
 Format: ${params.format === 'feed' ? '1:1 Quadrat' : '9:16 Hochformat'} für Instagram ${params.format}`;
 
   try {
-    console.log("Starting Google Gemini image generation");
+    console.log("Starting OpenAI DALL-E image generation");
     const startTime = Date.now();
 
-    let response;
-    let retryCount = 0;
-    const maxRetries = 3;
-
-    while (retryCount < maxRetries) {
-      try {
-        // IMPORTANT: using nanobanana model for image generation
-        response = await gemini.models.generateContent({
-          model: "gemini-2.5-flash-image-preview",
-          contents: [{ role: "user", parts: [{ text: enhancedPrompt }] }],
-          config: {
-            responseModalities: [Modality.TEXT, Modality.IMAGE],
-          },
-        });
-        break; // Success, exit retry loop
-      } catch (apiError: any) {
-        retryCount++;
-        console.log(`Gemini API attempt ${retryCount} failed:`, apiError.message);
-        
-        if (apiError.status === 503 && retryCount < maxRetries) {
-          console.log(`Retrying in ${retryCount * 2} seconds...`);
-          await new Promise(resolve => setTimeout(resolve, retryCount * 2000));
-        } else {
-          throw apiError; // Re-throw if not retryable or max retries reached
-        }
-      }
-    }
-
-    if (!response) {
-      throw new Error("Failed to get response after retries");
-    }
+    const response = await openai.images.generate({
+      model: "dall-e-3",
+      prompt: prompt,
+      n: 1,
+      size: params.format === 'feed' ? "1024x1024" : "1024x1792",
+      quality: "standard",
+      response_format: "url",
+    });
 
     const endTime = Date.now();
-    console.log(`Gemini image generation completed in ${endTime - startTime}ms`);
+    console.log(`OpenAI image generation completed in ${endTime - startTime}ms`);
 
-    const candidates = response.candidates;
-    if (!candidates || candidates.length === 0) {
-      throw new Error("No image candidates generated");
+    const imageUrl = response.data[0]?.url;
+    if (!imageUrl) {
+      throw new Error("No image URL received from OpenAI");
     }
 
-    const content = candidates[0].content;
-    if (!content || !content.parts) {
-      throw new Error("No content parts in response");
+    console.log("OpenAI image URL received");
+
+    // Download the image and save it locally
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to download generated image: ${imageResponse.status}`);
     }
 
-    for (const part of content.parts) {
-      if (part.text) {
-        console.log("Gemini response text:", part.text);
-      } else if (part.inlineData && part.inlineData.data) {
-        // Save image to attached_assets directory
-        const timestamp = Date.now();
-        const filename = `generated-image-${timestamp}.jpg`;
-        const imagePath = path.join("attached_assets", "generated_images", filename);
-        
-        // Ensure directory exists
-        const dir = path.dirname(imagePath);
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
-        }
-
-        const imageData = Buffer.from(part.inlineData.data, "base64");
-        fs.writeFileSync(imagePath, imageData);
-        console.log(`Image saved as ${imagePath}`);
-        
-        // Return the path that can be used with @assets alias
-        return `/attached_assets/generated_images/${filename}`;
-      }
+    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    
+    // Save image to attached_assets directory
+    const timestamp = Date.now();
+    const filename = `generated-image-${timestamp}.jpg`;
+    const imagePath = path.join("attached_assets", "generated_images", filename);
+    
+    // Ensure directory exists
+    const dir = path.dirname(imagePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
 
-    throw new Error("No image data found in response");
+    fs.writeFileSync(imagePath, imageBuffer);
+    console.log(`Image saved as ${imagePath}`);
+    
+    // Return the path that can be used with @assets alias
+    return `/attached_assets/generated_images/${filename}`;
+
   } catch (error) {
-    console.error("Error generating image with Gemini:", error);
+    console.error("Error generating image with OpenAI:", error);
     throw new Error("Failed to generate image");
   }
 }
 
 export async function analyzeUploadedImage(base64Image: string): Promise<string> {
   try {
-    console.log("Starting Gemini image analysis");
+    console.log("Starting OpenAI image analysis");
     const startTime = Date.now();
 
-    const contents = [
-      {
-        inlineData: {
-          data: base64Image,
-          mimeType: "image/jpeg",
-        },
-      },
-      `Analysieren Sie dieses Bild detailliert für Instagram-Content in der ästhetischen Medizin:
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Image}`
+              }
+            },
+            {
+              type: "text",
+              text: `Analysieren Sie dieses Bild detailliert für Instagram-Content in der ästhetischen Medizin:
 
 1. KOMPOSITION: Bildaufbau, Blickführung, Formateignung für Instagram
 2. BELEUCHTUNG: Lichtqualität, Schatten, Stimmung
@@ -217,20 +219,20 @@ export async function analyzeUploadedImage(base64Image: string): Promise<string>
 5. ÄSTHETIK: Farbharmonie, Stil, Qualität
 6. VERBESSERUNGSVORSCHLÄGE: Konkrete Tipps für bessere Instagram-Wirkung
 
-Fokus auf professionelle Darstellung für ästhetische Medizin (Botulinum, Hyaluron, etc.).`,
-    ];
-
-    const response = await gemini.models.generateContent({
-      model: "gemini-2.5-pro",
-      contents: contents,
+Fokus auf professionelle Darstellung für ästhetische Medizin (Botulinum, Hyaluron, etc.).`
+            }
+          ]
+        }
+      ],
+      max_tokens: 1000
     });
 
     const endTime = Date.now();
-    console.log(`Gemini image analysis completed in ${endTime - startTime}ms`);
+    console.log(`OpenAI image analysis completed in ${endTime - startTime}ms`);
 
-    return response.text || "Bildanalyse konnte nicht durchgeführt werden.";
+    return response.choices[0]?.message?.content || "Bildanalyse konnte nicht durchgeführt werden.";
   } catch (error) {
-    console.error("Error analyzing image with Gemini:", error);
+    console.error("Error analyzing image with OpenAI:", error);
     throw new Error("Failed to analyze image");
   }
 }
