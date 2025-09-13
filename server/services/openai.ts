@@ -86,13 +86,14 @@ export interface ImageGenerationParams {
   format: "feed" | "story" | "reel";
 }
 
-export async function generateImage(params: ImageGenerationParams): Promise<string> {
-  const sizeMap = {
-    feed: "1024x1024",
-    story: "1024x1792", 
-    reel: "1024x1792"
-  } as const;
+// Using Google Gemini for image generation as requested
+import { GoogleGenAI, Modality } from "@google/genai";
+import * as fs from "fs";
+import * as path from "path";
 
+const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+
+export async function generateImage(params: ImageGenerationParams): Promise<string> {
   const enhancedPrompt = `${params.prompt}
 
 Stil-Anforderungen:
@@ -106,52 +107,125 @@ Stil-Anforderungen:
 - Farben: warme, professionelle Töne
 - Komposition geeignet für Instagram ${params.format} Format
 - Mit Menschen: mindestens 1 Person (Expert:in und/oder Patient:in)
-- Keine Logos, keine Markennamen, photorealistisch`;
+- Keine Logos, keine Markennamen, photorealistisch
+
+Format: ${params.format === 'feed' ? '1:1 Quadrat' : '9:16 Hochformat'} für Instagram ${params.format}`;
 
   try {
-    const response = await openai.images.generate({
-      model: "dall-e-3",
-      prompt: enhancedPrompt,
-      n: 1,
-      size: sizeMap[params.format],
-      quality: "hd",
-      style: "natural",
-    });
+    console.log("Starting Google Gemini image generation");
+    const startTime = Date.now();
 
-    return response.data?.[0]?.url || "";
+    let response;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    while (retryCount < maxRetries) {
+      try {
+        // IMPORTANT: only this gemini model supports image generation
+        response = await gemini.models.generateContent({
+          model: "gemini-2.0-flash-preview-image-generation",
+          contents: [{ role: "user", parts: [{ text: enhancedPrompt }] }],
+          config: {
+            responseModalities: [Modality.TEXT, Modality.IMAGE],
+          },
+        });
+        break; // Success, exit retry loop
+      } catch (apiError: any) {
+        retryCount++;
+        console.log(`Gemini API attempt ${retryCount} failed:`, apiError.message);
+        
+        if (apiError.status === 503 && retryCount < maxRetries) {
+          console.log(`Retrying in ${retryCount * 2} seconds...`);
+          await new Promise(resolve => setTimeout(resolve, retryCount * 2000));
+        } else {
+          throw apiError; // Re-throw if not retryable or max retries reached
+        }
+      }
+    }
+
+    if (!response) {
+      throw new Error("Failed to get response after retries");
+    }
+
+    const endTime = Date.now();
+    console.log(`Gemini image generation completed in ${endTime - startTime}ms`);
+
+    const candidates = response.candidates;
+    if (!candidates || candidates.length === 0) {
+      throw new Error("No image candidates generated");
+    }
+
+    const content = candidates[0].content;
+    if (!content || !content.parts) {
+      throw new Error("No content parts in response");
+    }
+
+    for (const part of content.parts) {
+      if (part.text) {
+        console.log("Gemini response text:", part.text);
+      } else if (part.inlineData && part.inlineData.data) {
+        // Save image to attached_assets directory
+        const timestamp = Date.now();
+        const filename = `generated-image-${timestamp}.jpg`;
+        const imagePath = path.join("attached_assets", "generated_images", filename);
+        
+        // Ensure directory exists
+        const dir = path.dirname(imagePath);
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+
+        const imageData = Buffer.from(part.inlineData.data, "base64");
+        fs.writeFileSync(imagePath, imageData);
+        console.log(`Image saved as ${imagePath}`);
+        
+        // Return the path that can be used with @assets alias
+        return `/attached_assets/generated_images/${filename}`;
+      }
+    }
+
+    throw new Error("No image data found in response");
   } catch (error) {
-    console.error("Error generating image:", error);
+    console.error("Error generating image with Gemini:", error);
     throw new Error("Failed to generate image");
   }
 }
 
 export async function analyzeUploadedImage(base64Image: string): Promise<string> {
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-5",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: "Analyze this image and provide a detailed description that could be used to enhance or modify it for Instagram content. Focus on composition, lighting, subjects, and overall aesthetic quality."
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`
-              }
-            }
-          ],
+    console.log("Starting Gemini image analysis");
+    const startTime = Date.now();
+
+    const contents = [
+      {
+        inlineData: {
+          data: base64Image,
+          mimeType: "image/jpeg",
         },
-      ],
-      max_tokens: 500,
+      },
+      `Analysieren Sie dieses Bild detailliert für Instagram-Content in der ästhetischen Medizin:
+
+1. KOMPOSITION: Bildaufbau, Blickführung, Formateignung für Instagram
+2. BELEUCHTUNG: Lichtqualität, Schatten, Stimmung
+3. PERSONEN: Darstellung, Professionalität, Emotionen
+4. UMGEBUNG: Praxis-/Klinikumgebung, Sauberkeit, Modernität
+5. ÄSTHETIK: Farbharmonie, Stil, Qualität
+6. VERBESSERUNGSVORSCHLÄGE: Konkrete Tipps für bessere Instagram-Wirkung
+
+Fokus auf professionelle Darstellung für ästhetische Medizin (Botulinum, Hyaluron, etc.).`,
+    ];
+
+    const response = await gemini.models.generateContent({
+      model: "gemini-2.5-pro",
+      contents: contents,
     });
 
-    return response.choices[0].message.content || "";
+    const endTime = Date.now();
+    console.log(`Gemini image analysis completed in ${endTime - startTime}ms`);
+
+    return response.text || "Bildanalyse konnte nicht durchgeführt werden.";
   } catch (error) {
-    console.error("Error analyzing image:", error);
+    console.error("Error analyzing image with Gemini:", error);
     throw new Error("Failed to analyze image");
   }
 }
