@@ -1,6 +1,5 @@
 interface NanobananaModification {
   description: string;
-  // Add more modification options as needed
 }
 
 export interface NanobananaResponse {
@@ -10,46 +9,114 @@ export interface NanobananaResponse {
   error?: string;
 }
 
+// OpenRouter API configuration (same as in openai.ts)
+const rawOpenrouterApiKey = process.env.OPENROUTER_API_KEY || "";
+if (!rawOpenrouterApiKey) {
+  throw new Error("OPENROUTER_API_KEY environment variable is not set.");
+}
+
+const openrouterApiKey = rawOpenrouterApiKey
+  .replace(/[\u2013\u2014]/g, '-') // Replace en-dash and em-dash with hyphen
+  .trim();
+
 export async function modifyImageWithNanobanana(
   imageUrl: string, 
   modifications: NanobananaModification
 ): Promise<NanobananaResponse> {
-  // This is a placeholder for Nanobanana API integration
-  // In a real implementation, you would make an API call to Nanobanana
-  
-  const nanobananaApiKey = process.env.NANOBANANA_API_KEY || process.env.NANOBANANA_API_KEY_ENV_VAR || "default_key";
+  const jobId = "job_" + Date.now();
   
   try {
-    // Placeholder implementation - replace with actual Nanobanana API call
-    const response = await fetch("https://api.nanobanana.com/v1/modify", {
+    console.log("Starting Nanobanana image modification via OpenRouter");
+    const startTime = Date.now();
+
+    const modificationPrompt = `Modify this image based on the following request: ${modifications.description}
+
+Please make the requested modifications while maintaining the professional quality and style of the original image. Keep the same composition and lighting style but apply the requested changes.
+
+Return the modified image, not a text description.`;
+
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${nanobananaApiKey}`,
+        "Authorization": `Bearer ${openrouterApiKey}`,
         "Content-Type": "application/json",
+        "Accept": "application/json"
       },
       body: JSON.stringify({
-        image_url: imageUrl,
-        description: modifications.description,
-        // Add other parameters as required by Nanobanana API
-      }),
+        model: "google/gemini-2.5-flash-image-preview",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: modificationPrompt
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: imageUrl
+                }
+              }
+            ]
+          }
+        ]
+      })
     });
 
+    console.log("OpenRouter modification response status:", response.status);
+    
     if (!response.ok) {
-      throw new Error(`Nanobanana API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error("OpenRouter API error for image modification:", response.status, errorText);
+      throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
     }
 
-    const result = await response.json();
+    const data = await response.json();
+    console.log("OpenRouter modification response received");
+    
+    const endTime = Date.now();
+    console.log(`OpenRouter image modification completed in ${endTime - startTime}ms`);
+
+    // Extract the modified image from the response (same logic as generateImage)
+    const choice = data.choices?.[0];
+    if (!choice) {
+      throw new Error("No choices in modification response");
+    }
+
+    const images = choice.message?.images;
+    let modifiedImageUrl = null;
+    
+    // Check for images in the response
+    if (images && Array.isArray(images) && images.length > 0) {
+      const firstImage = images[0];
+      
+      if (typeof firstImage === 'string' && firstImage.startsWith('data:image/')) {
+        modifiedImageUrl = firstImage;
+      } else if (firstImage && typeof firstImage === 'object') {
+        if (firstImage.url && typeof firstImage.url === 'string') {
+          modifiedImageUrl = firstImage.url;
+        } else if (firstImage.image_url && typeof firstImage.image_url === 'object' && firstImage.image_url.url) {
+          modifiedImageUrl = firstImage.image_url.url;
+        }
+      }
+    }
+
+    if (!modifiedImageUrl) {
+      throw new Error("No image data found in modification response");
+    }
+
+    console.log("Successfully extracted modified image data");
     
     return {
-      jobId: result.job_id || "job_" + Date.now(),
-      status: result.status || "processing",
-      modifiedImageUrl: result.modified_image_url,
-      error: result.error,
+      jobId,
+      status: "completed",
+      modifiedImageUrl,
     };
   } catch (error) {
-    console.error("Error modifying image with Nanobanana:", error);
+    console.error("Error modifying image with Nanobanana via OpenRouter:", error);
     return {
-      jobId: "error_" + Date.now(),
+      jobId,
       status: "failed",
       error: error instanceof Error ? error.message : "Unknown error",
     };
@@ -57,26 +124,24 @@ export async function modifyImageWithNanobanana(
 }
 
 export async function checkNanobananaJobStatus(jobId: string): Promise<NanobananaResponse> {
-  const nanobananaApiKey = process.env.NANOBANANA_API_KEY || process.env.NANOBANANA_API_KEY_ENV_VAR || "default_key";
+  // Since we now process images synchronously via OpenRouter,
+  // we don't need actual job status checking. This function is kept for compatibility.
   
   try {
-    const response = await fetch(`https://api.nanobanana.com/v1/jobs/${jobId}`, {
-      headers: {
-        "Authorization": `Bearer ${nanobananaApiKey}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Nanobanana API error: ${response.status}`);
+    // If jobId starts with "error_", it's a failed job
+    if (jobId.startsWith("error_")) {
+      return {
+        jobId,
+        status: "failed",
+        error: "Image modification failed",
+      };
     }
 
-    const result = await response.json();
-    
+    // For actual job IDs, we assume they're completed since our process is synchronous
     return {
       jobId,
-      status: result.status || "processing",
-      modifiedImageUrl: result.modified_image_url,
-      error: result.error,
+      status: "completed",
+      // Note: The actual modifiedImageUrl is stored in the database, not retrieved here
     };
   } catch (error) {
     console.error("Error checking Nanobanana job status:", error);
