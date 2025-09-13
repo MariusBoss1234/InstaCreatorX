@@ -20,6 +20,12 @@ interface GetImagesResponse {
   error?: string;
 }
 
+interface GetUploadedImagesResponse {
+  success: boolean;
+  images: UploadedImage[];
+  error?: string;
+}
+
 interface UploadImageResponse {
   success: boolean;
   image: UploadedImage;
@@ -91,6 +97,20 @@ export function useUploadImage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/uploads"] });
+    },
+  });
+}
+
+export function useUploadedImages(limit?: number) {
+  return useQuery({
+    queryKey: ["/api/uploads", limit],
+    queryFn: async (): Promise<GetUploadedImagesResponse> => {
+      const params = new URLSearchParams();
+      if (limit) params.append("limit", limit.toString());
+      
+      const url = `/api/uploads${params.toString() ? `?${params.toString()}` : ""}`;
+      const response = await fetch(url);
+      return response.json();
     },
   });
 }

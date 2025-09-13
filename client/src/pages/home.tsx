@@ -3,6 +3,7 @@ import { Camera, Bell } from "lucide-react";
 import FormatSelector from "@/components/format-selector";
 import IdeaGenerator from "@/components/idea-generator";
 import ImageUpload from "@/components/image-upload";
+import UploadedImages from "@/components/uploaded-images";
 import PreviewArea from "@/components/preview-area";
 import GeneratedImages from "@/components/generated-images";
 import ActionButtons from "@/components/action-buttons";
@@ -73,6 +74,9 @@ export default function Home() {
 
               {/* Image Upload */}
               <ImageUpload />
+
+              {/* Uploaded Images Gallery */}
+              <UploadedImages />
             </div>
 
             {/* Right Column: Preview & Generation */}
