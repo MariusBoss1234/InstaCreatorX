@@ -104,7 +104,7 @@ const openrouterApiKey = rawOpenrouterApiKey
 // Validate that all characters are ASCII
 function assertAscii(name: string, value: string) {
   if (!/^[\x00-\x7F]*$/.test(value)) {
-    const badChar = [...value].find(c => c.codePointAt(0)! > 127);
+    const badChar = Array.from(value).find(c => c.codePointAt(0)! > 127);
     const codePoint = badChar ? badChar.codePointAt(0)!.toString(16) : 'unknown';
     console.error(`${name} contains non-ASCII character U+${codePoint} '${badChar}'. Please re-enter using plain ASCII characters.`);
     throw new Error(`${name} contains non-ASCII characters. Please re-enter the key with plain ASCII characters only.`);
@@ -152,14 +152,10 @@ Generate image, not text.`;
         messages: [
           {
             role: "user",
-            content: [
-              {
-                type: "text",
-                text: prompt
-              }
-            ]
+            content: prompt
           }
-        ]
+        ],
+        modalities: ["image", "text"]
       })
     });
 

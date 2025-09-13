@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Eye, Edit3, Loader2, X, Trash2 } from "lucide-react";
+import { Eye, Edit3, Loader2, X, Trash2, Download } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -95,6 +95,19 @@ export default function UploadedImages() {
         });
       }
     }
+  };
+
+  const handleDownloadClick = (image: UploadedImage) => {
+    // Use the modified URL if available, otherwise use original
+    const imageUrl = image.modifiedUrl || image.originalUrl;
+    
+    // Create a temporary link and trigger download
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    link.download = `bild_${image.id}_${image.modifiedUrl ? 'bearbeitet' : 'original'}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleModifySubmit = async () => {
@@ -239,6 +252,15 @@ export default function UploadedImages() {
                   </Button>
                   <Button
                     size="sm"
+                    variant="secondary"
+                    onClick={() => handleDownloadClick(image)}
+                    data-testid={`button-download-${image.id}`}
+                    aria-label="Bild herunterladen"
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="sm"
                     variant="destructive"
                     onClick={() => handleDeleteClick(image)}
                     data-testid={`button-delete-${image.id}`}
@@ -289,15 +311,6 @@ export default function UploadedImages() {
               {selectedImage.modifiedUrl && (
                 <div className="text-sm text-muted-foreground text-center">
                   Zeigt das bearbeitete Bild
-                </div>
-              )}
-
-              {selectedImage.modifications?.analysis && (
-                <div className="p-4 bg-muted rounded-lg">
-                  <h4 className="font-medium mb-2">Bildanalyse:</h4>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedImage.modifications.analysis}
-                  </p>
                 </div>
               )}
             </div>
