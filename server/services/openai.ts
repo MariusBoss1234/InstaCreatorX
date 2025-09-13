@@ -1,8 +1,14 @@
 import OpenAI from "openai";
 
+// Fail fast on missing API key
+const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR;
+if (!apiKey) {
+  throw new Error("OPENAI_API_KEY not set");
+}
+
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key"
+  apiKey: apiKey
 });
 
 export interface PostIdeaGeneration {
@@ -20,35 +26,54 @@ export interface GeneratedIdea {
 }
 
 export async function generatePostIdeas(params: PostIdeaGeneration): Promise<GeneratedIdea[]> {
-  const systemPrompt = `You are an expert Instagram content creator specializing in aesthetic medicine and skincare. 
-Generate creative, engaging post ideas that are professional, informative, and suitable for Instagram.
+  const ctaText = params.postType === "cta" ? "CTA-Zeile (max. 6 Wörter, unaufdringlich, z. B. 'Beratung vereinbaren.')" : "Keine CTA-Zeile (organic post)";
+  
+  const systemPrompt = `Sie sind ein Instagram-Content-Spezialist für ästhetische Medizin (Botulinum, Hyaluron, Skinbooster, Peelings, Laser).
 
-Rules:
-- No medical claims or promises
-- Focus on education and awareness
-- Professional tone suitable for healthcare
-- Ideas should be appropriate for ${params.format} format
-- ${params.postType === "cta" ? "Include subtle call-to-action elements" : "Focus on educational/informational content"}
-- Target audience: ${params.audience}
+Erstellen Sie ${params.count} professionelle, deutsche Instagram-Post-Idee(n) zum Thema: ${params.topic}
 
-Respond with a JSON array of exactly ${params.count} ideas. Each idea should have:
-- title: Short, catchy title (max 60 characters)
-- description: Brief description of the post content (max 150 characters)
-- prompt: Detailed image generation prompt for creating the visual content
+STRUKTUR:
+- Titel: Prägnant, max. 60 Zeichen
+- Beschreibung: Hook + 2-3 Stichpunkte + ${ctaText}
+- Bildprompt: Deutscher Prompt für Bilderstellung
 
-Format: { "ideas": [{"title": "...", "description": "...", "prompt": "..."}] }`;
+TONALITÄT: Seriös, professionell, formelle "Sie"-Ansprache, keine Heilversprechen.
+
+Antworten Sie ausschließlich mit diesem JSON-Format:
+{
+  "ideas": [
+    {
+      "title": "Titel hier",
+      "description": "Instagram-Post-Text hier",
+      "prompt": "Deutscher Bildprompt hier"
+    }
+  ]
+}`;
 
   try {
+    console.log(`Starting OpenAI idea generation for topic: ${params.topic}`);
+    const startTime = Date.now();
+    
     const response = await openai.chat.completions.create({
-      model: "gpt-5",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `Generate ${params.count} Instagram post ideas about: ${params.topic}` }
+        { role: "user", content: `Erstellen Sie ${params.count} Instagram-Post-Ideen zum Thema: ${params.topic}` }
       ],
       response_format: { type: "json_object" },
+      max_tokens: 800,
     });
 
-    const result = JSON.parse(response.choices[0].message.content || "{}");
+    const endTime = Date.now();
+    console.log(`OpenAI idea generation completed in ${endTime - startTime}ms`);
+
+    const rawContent = response.choices[0].message.content || "{}";
+    console.log("OpenAI raw response:", rawContent);
+    
+    const result = JSON.parse(rawContent);
+    console.log("Parsed result:", result);
+    console.log("Ideas array:", result.ideas);
+    
     return result.ideas || [];
   } catch (error) {
     console.error("Error generating post ideas:", error);
@@ -70,16 +95,18 @@ export async function generateImage(params: ImageGenerationParams): Promise<stri
 
   const enhancedPrompt = `${params.prompt}
 
-Style requirements:
-- Professional, clean aesthetic
-- Modern healthcare/beauty clinic environment
-- High-quality, editorial photography style
-- Soft, natural lighting
-- Professional people in clean, modern settings
-- No medical instruments, needles, or invasive procedures visible
-- Focus on wellness and beauty enhancement
-- Colors: warm, professional tones
-- Composition suitable for Instagram ${params.format} format`;
+Stil-Anforderungen:
+- Professionelle, saubere Ästhetik
+- Moderne Praxis-/Klinikumgebung für ästhetische Medizin
+- Hochwertige, redaktionelle Fotografie
+- Weiches, natürliches Licht
+- Professionelle Menschen in sauberen, modernen Umgebungen
+- Keine medizinischen Instrumente, Nadeln oder invasive Verfahren sichtbar
+- Fokus auf Wellness und Schönheitsverbesserung
+- Farben: warme, professionelle Töne
+- Komposition geeignet für Instagram ${params.format} Format
+- Mit Menschen: mindestens 1 Person (Expert:in und/oder Patient:in)
+- Keine Logos, keine Markennamen, photorealistisch`;
 
   try {
     const response = await openai.images.generate({
