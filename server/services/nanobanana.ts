@@ -9,15 +9,13 @@ export interface NanobananaResponse {
   error?: string;
 }
 
-// OpenRouter API configuration (same as in openai.ts)
-const rawOpenrouterApiKey = process.env.OPENROUTER_API_KEY || "";
-if (!rawOpenrouterApiKey) {
-  throw new Error("OPENROUTER_API_KEY environment variable is not set.");
+function getOpenRouterApiKey(): string {
+  const raw = process.env.OPENROUTER_API_KEY || "";
+  if (!raw) {
+    throw new Error("OPENROUTER_API_KEY environment variable is not set.");
+  }
+  return raw.replace(/[\u2013\u2014]/g, '-').trim();
 }
-
-const openrouterApiKey = rawOpenrouterApiKey
-  .replace(/[\u2013\u2014]/g, '-') // Replace en-dash and em-dash with hyphen
-  .trim();
 
 export async function modifyImageWithNanobanana(
   imageUrl: string, 
@@ -38,7 +36,7 @@ Return the modified image, not a text description.`;
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${openrouterApiKey}`,
+        "Authorization": `Bearer ${getOpenRouterApiKey()}`,
         "Content-Type": "application/json",
         "Accept": "application/json"
       },

@@ -1,7 +1,7 @@
 import { Download, Edit, Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useGetImages } from "@/hooks/use-image-generation";
+import { useGetImages } from "@/hooks/use-n8n-generation";
 
 export default function GeneratedImages() {
   const { data: imagesData, isLoading } = useGetImages(undefined, 8);

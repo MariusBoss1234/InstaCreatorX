@@ -1,15 +1,15 @@
 import OpenAI from "openai";
 
-// Fail fast on missing API key
-const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR;
-if (!apiKey) {
-  throw new Error("OPENAI_API_KEY not set");
+let cachedOpenAIClient: OpenAI | null = null;
+function getOpenAIClient(): OpenAI {
+  if (cachedOpenAIClient) return cachedOpenAIClient;
+  const key = process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR;
+  if (!key) {
+    throw new Error("OPENAI_API_KEY not set");
+  }
+  cachedOpenAIClient = new OpenAI({ apiKey: key });
+  return cachedOpenAIClient;
 }
-
-// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ 
-  apiKey: apiKey
-});
 
 export interface PostIdeaGeneration {
   topic: string;
@@ -35,7 +35,7 @@ Erstellen Sie ${params.count} professionelle, deutsche Instagram-Post-Idee(n) zu
 STRUKTUR:
 - Titel: Prägnant, max. 60 Zeichen
 - Beschreibung: Hook + 2-3 Stichpunkte + ${ctaText}
-- Bildprompt: Deutscher Prompt für Bilderstellung
+- Bildprompt: ENGLISCHER Prompt (nur Base-Foto, KEIN Text im Bild) für einen redaktionellen "Infotainment"-Stil: Halbporträt einer freundlichen Expertin/eines Experten im weißen Kittel; Person RECHTS positioniert; weiches Studiolicht; solider dunkel-anthrazit Hintergrund; viel Negativraum LINKS für spätere Typografie; seriös, modern, vertrauenswürdig; photorealistisch; keine Logos/Wasserzeichen/Text; geeignet für Instagram ${params.format}.
 
 TONALITÄT: Seriös, professionell, formelle "Sie"-Ansprache, keine Heilversprechen.
 
@@ -45,7 +45,7 @@ Antworten Sie ausschließlich mit diesem JSON-Format:
     {
       "title": "Titel hier",
       "description": "Instagram-Post-Text hier",
-      "prompt": "Deutscher Bildprompt hier"
+      "prompt": "English base-photo prompt here (per specs above)"
     }
   ]
 }`;
@@ -54,6 +54,7 @@ Antworten Sie ausschließlich mit diesem JSON-Format:
     console.log(`Starting OpenAI idea generation for topic: ${params.topic}`);
     const startTime = Date.now();
     
+    const openai = getOpenAIClient();
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -90,18 +91,6 @@ export interface ImageGenerationParams {
 import * as fs from "fs";
 import * as path from "path";
 
-// OpenRouter API configuration
-const rawOpenrouterApiKey = process.env.OPENROUTER_API_KEY || "";
-if (!rawOpenrouterApiKey) {
-  throw new Error("OPENROUTER_API_KEY environment variable is not set. Please provide your OpenRouter API key.");
-}
-
-// Clean API key - replace Unicode dashes with ASCII hyphens and validate ASCII
-const openrouterApiKey = rawOpenrouterApiKey
-  .replace(/[\u2013\u2014]/g, '-') // Replace en-dash and em-dash with hyphen
-  .trim();
-
-// Validate that all characters are ASCII
 function assertAscii(name: string, value: string) {
   if (!/^[\x00-\x7F]*$/.test(value)) {
     const badChar = Array.from(value).find(c => c.codePointAt(0)! > 127);
@@ -111,30 +100,60 @@ function assertAscii(name: string, value: string) {
   }
 }
 
-// Validate API key is ASCII - hard fail if invalid
-assertAscii('OPENROUTER_API_KEY', openrouterApiKey);
-console.log("OpenRouter API key loaded:", openrouterApiKey.substring(0, 6) + "...");
+function getOpenRouterApiKey(): string {
+  const raw = process.env.OPENROUTER_API_KEY || "";
+  if (!raw) {
+    throw new Error("OPENROUTER_API_KEY environment variable is not set. Please provide your OpenRouter API key.");
+  }
+  const cleaned = raw.replace(/[\u2013\u2014]/g, '-').trim();
+  assertAscii('OPENROUTER_API_KEY', cleaned);
+  return cleaned;
+}
+
+async function generateImageViaOpenAI(params: ImageGenerationParams): Promise<string> {
+  const openai = getOpenAIClient();
+  const size = params.format === "feed" ? "1024x1024" : "1024x1792";
+  const prompt = `Photorealistic base photo for an 'infotainment' post. Half-portrait expert in white lab coat, subject on RIGHT, large negative space LEFT, soft studio light, dark charcoal background, editorial, clean, no text, no logos. Theme: ${params.prompt}`;
+
+  const result = await openai.images.generate({
+    model: "gpt-image-1",
+    prompt,
+    size,
+    response_format: "b64_json",
+  });
+
+  const b64 = result.data?.[0]?.b64_json;
+  if (!b64) {
+    throw new Error("OpenAI Images did not return image data");
+  }
+
+  const imageBuffer = Buffer.from(b64, "base64");
+  const timestamp = Date.now();
+  const filename = `generated-image-${timestamp}.png`;
+  const imagePath = path.join("attached_assets", "generated_images", filename);
+  const dir = path.dirname(imagePath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  fs.writeFileSync(imagePath, imageBuffer);
+  return `/attached_assets/generated_images/${filename}`;
+}
 
 export async function generateImage(params: ImageGenerationParams): Promise<string> {
-  const prompt = `Create a visual image (no text description): ${params.prompt}
+const prompt = `Create a photorealistic base photo for an 'infotainment' Instagram post.
 
-IMPORTANT: Please generate an actual image file, not a text description.
+User intent: ${params.prompt}
 
-Style requirements:
-- Modern medical practice/clinic environment for aesthetic medicine  
-- High-quality, editorial photography
-- Soft, natural lighting
-- Professional people in clean, modern environments
-- No medical instruments, needles or invasive procedures visible
-- Focus on wellness and beauty enhancement
-- Colors: warm, professional tones
-- Composition suitable for Instagram ${params.format} format
-- With people: at least 1 person (expert and/or patient)
-- No logos, no brand names, photorealistic
+Subject: half-portrait of a friendly, thoughtful healthcare professional wearing a white lab coat; looking slightly off-camera; hand gently touching the chin; trustworthy and modern.
+Composition: subject positioned on the RIGHT side of the frame; LARGE negative space LEFT for later typography; clean, minimalist, editorial framing.
+Lighting: soft professional studio lighting; subtle vignette; natural skin tones.
+Background: solid dark charcoal (near black), smooth and distraction-free.
+Aesthetics: premium editorial photography, 50mm lens look, sharp focus, high dynamic range.
+Branding constraints: NO logos, NO watermarks, NO brand text.
+Safety constraints: NO medical procedures, NO instruments, NO syringes/needles, NO wounds, NO patients; purely educational portrait.
+Format target: ${params.format === 'feed' ? '1:1 square' : '9:16 portrait'} for Instagram ${params.format}.
 
-Format: ${params.format === 'feed' ? '1:1 square' : '9:16 portrait'} for Instagram ${params.format}
-
-Generate image, not text.`;
+Do NOT add any text or graphics. Generate an actual image file.`;
 
   try {
     console.log("Starting OpenRouter Nanobanana image generation");
@@ -143,7 +162,7 @@ Generate image, not text.`;
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${openrouterApiKey}`,
+        "Authorization": `Bearer ${getOpenRouterApiKey()}`,
         "Content-Type": "application/json",
         "Accept": "application/json"
       },
@@ -321,17 +340,8 @@ Generate image, not text.`;
     }
 
     if (!imageData) {
-      console.error("No image data found. Response structure:", JSON.stringify({
-        hasContent: !!content,
-        contentType: typeof content,
-        isArray: Array.isArray(content),
-        contentLength: content?.length,
-        hasParts: !!data.choices?.[0]?.message?.parts,
-        partsLength: data.choices?.[0]?.message?.parts?.length,
-        firstPartType: data.choices?.[0]?.message?.parts?.[0]?.type,
-        preview: content?.substring ? content.substring(0, 100) + "..." : content
-      }, null, 2));
-      throw new Error("No image data found in response - the model may have returned text instead of an image");
+      console.warn("OpenRouter returned no image; attempting OpenAI Images fallback");
+      return await generateImageViaOpenAI(params);
     }
 
     console.log("Image data extracted successfully");
@@ -357,7 +367,8 @@ Generate image, not text.`;
 
   } catch (error) {
     console.error("Error generating image with OpenRouter Nanobanana:", error);
-    throw new Error("Failed to generate image");
+    console.warn("Falling back to OpenAI Images API");
+    return await generateImageViaOpenAI(params);
   }
 }
 
@@ -366,6 +377,7 @@ export async function analyzeUploadedImage(base64Image: string): Promise<string>
     console.log("Starting OpenAI image analysis");
     const startTime = Date.now();
 
+    const openai = getOpenAIClient();
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [

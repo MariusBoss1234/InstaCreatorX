@@ -3,7 +3,7 @@ import { useDropzone } from "react-dropzone";
 import { Upload, CloudUpload } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useUploadImage } from "@/hooks/use-image-generation";
+import { useUploadImage } from "@/hooks/use-n8n-generation";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ImageUpload() {

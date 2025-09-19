@@ -3,7 +3,7 @@ import { Eye, Wand2, RotateCcw, Image } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { useGenerateImage } from "@/hooks/use-image-generation";
+import { useGenerateImage } from "@/hooks/use-n8n-generation";
 import { useToast } from "@/hooks/use-toast";
 import type { InstagramFormat, PostIdea } from "@/types";
 

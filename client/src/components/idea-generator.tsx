@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useGenerateIdeas, useGetIdeas } from "@/hooks/use-idea-generation";
+import { useGenerateIdeas, useGetIdeas } from "@/hooks/use-n8n-generation";
 import { useToast } from "@/hooks/use-toast";
 import type { InstagramFormat, PostType, Audience, PostIdea } from "@/types";
 
