@@ -1,0 +1,34 @@
+MCP: n8n-mcp
+- Dieses Projekt stellt den MCP-Server „n8n-mcp“ bereit und er ist in der lokalen Cursor-Konfiguration hinterlegt (`C:\Users\Mariu\.cursor\mcp.json`).
+- Bevorzugt die Docker-Variante gemäß offiziellem Guide, da stabiler und ohne PATH-Probleme:
+  - command: "docker"
+  - args: ["run", "-i", "--rm", "--init", "ghcr.io/czlonkowski/n8n-mcp:latest"]
+- Nutze den MCP für:
+  - n8n-Dokumentation, Node/Tool-Referenzen, Validierung von Node-Konfigurationen
+  - Entwurf/Überarbeitung von n8n-Workflows (Ideen → Bildgenerierung → Upload/Processing)
+
+Projektkontext (InstaCreatorX)
+- Stack: React + TypeScript (Vite) im Ordner `client/`, optionale Express-API im Ordner `server/`.
+- Dev-Start: `npm run dev` (Vite Development Server, i. d. R. http://localhost:5173/).
+- Alternativ: `server/index.ts` startet Express und bindet Vite-Middleware in dev; in diesem Repo wird standardmäßig Vite allein gestartet.
+- Env: `.env` basiert auf `env.example` mit u. a.:
+  - `VITE_N8N_WEBHOOK_BASE`
+  - `VITE_N8N_WEBHOOK_ID`
+- N8N-Clientschicht: `client/src/lib/n8n-api.ts` (Webhook-Aufrufe, Fehlerbehandlung, Parsing).
+- React Hooks (n8n): `client/src/hooks/use-n8n-generation.ts` (Ideen, Bilder, Uploads, Kombi-Flows).
+- Klassische API-Hooks existieren weiter (`use-image-generation.ts`, `use-idea-generation.ts`) und sprechen Express-Routen an, sind aber zweitrangig, wenn n8n aktiv ist.
+
+Arbeitsprinzipien
+- Bevorzuge n8n-Webhooks (Service `n8nApi`) gegenüber Express-Routen, außer es ist explizit Backend-Funktionalität gefragt.
+- Wenn Workflows erweitert werden, halte die Frontend-Schnittstelle stabil (Hooks-Interfaces) und passe Parsing/Mapping in `n8n-api.ts` an.
+- Beachte TypeScript-Konventionen: klare Signaturen, frühe Rückgaben, schlanke Fehlerbehandlung, keine toten Catches.
+- Halte Code lesbar, lange Einzeiler vermeiden, sinnvolle Bezeichner wählen.
+
+Operationelle Hinweise
+- Wenn `npm`/`node` im Terminal nicht gefunden wird, nutze das Script `start-app.ps1` (setzt PATH und startet Vite).
+- Vite Dev-Server zeigt die Local-URL in der Konsole (typisch `http://localhost:5173/`).
+- Für MCP in Cursor: nach Änderung der `mcp.json` Cursor neu starten.
+
+Referenz
+- n8n-MCP Guide und empfohlene Docker-Konfiguration siehe Repository `czlonkowski/n8n-mcp`.
+

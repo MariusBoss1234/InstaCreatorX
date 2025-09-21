@@ -1,0 +1,106 @@
+---
+alwaysApply: false
+---
+
+## AI Projekt-Instruktionen für InstaCreatorX
+
+Diese Anleitung versorgt LLMs mit dem nötigen Kontext zu MCP (n8n-mcp), Projektstruktur, Entwicklungs- und Betriebsabläufen.
+
+### 1) MCP: n8n-mcp verfügbar
+
+- n8n-MCP ist konfiguriert in `C:\Users\Mariu\.cursor\mcp.json`.
+- Empfohlene Ausführung laut Guide: Docker-basierter Start
+
+```json
+{
+  "mcpServers": {
+    "n8n-mcp": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "--init", "ghcr.io/czlonkowski/n8n-mcp:latest"]
+    }
+  }
+}
+```
+
+- Nutzen:
+  - Recherche in n8n-Dokumentation, Nodes und Tools
+  - Validierung von Node-Configs (z. B. `validate_node_operation`)
+  - Unterstützte Workflows entwerfen/refinieren (Ideen → Prompt → Bild → Upload/Processing)
+
+Referenz: [n8n-mcp Repository](https://github.com/czlonkowski/n8n-mcp)
+
+### 2) Projektüberblick
+
+- Frontend: `client/` (React + TypeScript, Vite)
+- Backend (optional für lokale API/Storage): `server/` (Express + TS)
+- Shared Types/Schemas: `shared/`
+- Assets: `attached_assets/`
+- Build/Dev: Vite-Konfiguration in `vite.config.ts`
+- Dev-Server: typ. `http://localhost:5173/` (Vite)
+
+### 3) N8N-Integration (Clientseitig bevorzugt)
+
+- Service: `client/src/lib/n8n-api.ts`
+  - Liest `VITE_N8N_WEBHOOK_BASE` und `VITE_N8N_WEBHOOK_ID`
+  - Methoden: `generatePostIdeas`, `generateImage`, `uploadAndProcessImage`, `generatePost`
+  - Robuste Fehlerbehandlung (`N8nApiError`) und flexible Parsing-Logik
+
+- Hooks: `client/src/hooks/use-n8n-generation.ts`
+  - `useGenerateIdeas`, `useGenerateImage`, `useUploadImage`, `useGeneratePost`
+  - Nutzen `n8nApi` und liefern stabile, UI-freundliche Response-Formate
+
+### 4) Legacy/Alternative Backend-Routen
+
+- `server/routes.ts` stellt Express-Endpunkte bereit (`/api/ideas/*`, `/api/images/*`, `/api/uploads/*`).
+- Diese sind hilfreich für lokale Persistenz/Validierung, aber nicht erforderlich, wenn n8n-Webhooks genutzt werden.
+
+### 5) Entwicklung & Start
+
+- Dev-Start bevorzugt über Vite:
+  - `npm run dev` im Projektroot (setzt `client/` als Root)
+  - Falls PATH-Probleme: `start-app.ps1` verwenden (setzt Node.js PATH und startet Vite)
+
+- Produktionsbuild:
+  - `npm run build` erzeugt `dist/public`
+  - `server/vite.ts` kann in Production `serveStatic` verwenden (Express bedient `dist/public`)
+
+### 6) Env-Konfiguration
+
+- `.env` aus `env.example` kopieren und anpassen:
+  - `VITE_N8N_WEBHOOK_BASE`
+  - `VITE_N8N_WEBHOOK_ID`
+
+### 7) Richtlinien für Beiträge (für LLM-generierte Änderungen)
+
+- Bevorzuge Anpassungen in `n8n-api.ts` und den Hooks, um die UI-Interfaces stabil zu halten.
+- Strikte Typisierung, sprechende Bezeichner, frühe Fehlerbehandlung.
+- Keine unnötigen Kommentare, nur wo „Warum“ nicht offensichtlich ist.
+- Keine umfangreichen Refactorings ohne Notwendigkeit; halte Änderungen fokussiert.
+
+### 8) Beispiele
+
+- Ideen generieren (Client):
+```ts
+const { mutateAsync: generateIdeas } = useGenerateIdeas();
+await generateIdeas({ topic: "Hyaluron Wasser", audience: "de", postType: "organic", format: "feed", count: 5 });
+```
+
+- Bild generieren (Client):
+```ts
+const { mutateAsync: generateImage } = useGenerateImage();
+const res = await generateImage({ prompt: "Minimalistisches Skincare Flatlay", format: "story" });
+```
+
+- Kombinierter Flow:
+```ts
+const { mutateAsync: generatePost } = useGeneratePost();
+const result = await generatePost({ topic: "Retinol Abendroutine", audience: "de", postType: "organic", format: "feed" });
+```
+
+### 9) Troubleshooting
+
+- `npm`/`node` nicht gefunden: PowerShell neu starten oder `start-app.ps1` ausführen.
+- Vite läuft, aber App nicht erreichbar: richtige Port-URL aus Konsolenausgabe verwenden.
+- MCP wird nicht erkannt: Cursor neustarten, Docker prüfen (falls Docker-Setup gewählt).
+
+

@@ -144,4 +144,14 @@
     @apply -translate-y-1;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   }
+
+  /* Hide scrollbar for horizontal swipe containers */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari, Opera */
+  }
 }

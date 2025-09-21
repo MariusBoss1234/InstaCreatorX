@@ -1,15 +1,12 @@
 import { useState } from "react";
 import { Camera, Bell } from "lucide-react";
-import FormatSelector from "@/components/format-selector";
 import IdeaGenerator from "@/components/idea-generator";
 import ImageEditor from "@/components/image-editor";
 import PreviewArea from "@/components/preview-area";
-import GeneratedImages from "@/components/generated-images";
-import ActionButtons from "@/components/action-buttons";
 import type { InstagramFormat, PostIdea } from "@/types";
 
 export default function Home() {
-  const [selectedFormat, setSelectedFormat] = useState<InstagramFormat>("feed");
+  const selectedFormat: InstagramFormat = "feed"; // Fixed format since FormatSelector is removed
   const [selectedIdea, setSelectedIdea] = useState<PostIdea | null>(null);
   const [imagePrompt, setImagePrompt] = useState("");
 
@@ -42,57 +39,63 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-6 max-w-6xl">
-        <div className="space-y-6">
-          {/* Hero Section */}
-          <div className="text-center space-y-2 mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold">Create Stunning Instagram Content</h1>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Generate creative post ideas and create beautiful images with AI, or upload and modify your existing content
-            </p>
-          </div>
+      <div className="min-h-screen bg-background">
+        {/* Mobile Hero Section */}
+        <div className="px-4 py-6 text-center bg-gradient-to-b from-primary/5 to-background">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2">
+            Create Stunning Instagram Content
+          </h1>
+          <p className="text-muted-foreground text-sm md:text-base max-w-md mx-auto">
+            Generate creative post ideas and beautiful images with AI
+          </p>
+        </div>
 
-          {/* Format Selection */}
-          <FormatSelector 
-            selectedFormat={selectedFormat} 
-            onFormatChange={setSelectedFormat} 
-          />
-
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Left Column: Content Creation */}
-            <div className="space-y-6">
-              {/* Idea Generation */}
-              <IdeaGenerator
-                format={selectedFormat}
-                onIdeaSelect={(idea) => {
-                  setSelectedIdea(idea);
-                  setImagePrompt(idea.prompt || idea.description);
-                }}
-                selectedIdea={selectedIdea}
-              />
-
-              {/* Image Editor - Two-step process */}
-              <ImageEditor />
+        {/* Mobile-First Layout */}
+        <div className="px-4 pb-20">
+          <div className="max-w-lg mx-auto md:max-w-none md:grid md:grid-cols-2 md:gap-6 lg:max-w-6xl lg:mx-auto">
+            
+            {/* Mobile: Full width, stacked sections */}
+            <div className="space-y-6 md:space-y-6">
+              {/* Idea Generation Section */}
+              <div className="bg-card rounded-xl border shadow-sm">
+                <IdeaGenerator
+                  format={selectedFormat}
+                  onIdeaSelect={(idea) => {
+                    setSelectedIdea(idea);
+                    setImagePrompt(idea.prompt || idea.description);
+                  }}
+                  selectedIdea={selectedIdea}
+                  onIdeaUpdate={(updatedIdea) => {
+                    if (selectedIdea && selectedIdea.id === updatedIdea.id) {
+                      setSelectedIdea(updatedIdea);
+                    }
+                  }}
+                />
+              </div>
             </div>
 
-            {/* Right Column: Preview & Generation */}
-            <div className="space-y-6">
-              {/* Preview Area */}
-              <PreviewArea
-                format={selectedFormat}
-                prompt={imagePrompt}
-                onPromptChange={setImagePrompt}
-                selectedIdea={selectedIdea}
-              />
+            {/* Preview & Image Editor Section */}
+            <div className="mt-6 md:mt-0 space-y-6">
+              {/* Preview Area - Mobile optimized */}
+              <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
+                <PreviewArea
+                  format={selectedFormat}
+                  prompt={imagePrompt}
+                  onPromptChange={setImagePrompt}
+                  selectedIdea={selectedIdea}
+                />
+              </div>
 
-              {/* Generated Images */}
-              <GeneratedImages />
-
-              {/* Action Buttons */}
-              <ActionButtons />
+              {/* Image Editor Section - After Preview */}
+              <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
+                <ImageEditor />
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Mobile Bottom Navigation Space */}
+        <div className="h-20 md:hidden"></div>
       </div>
 
       {/* Floating Action Button for Mobile */}

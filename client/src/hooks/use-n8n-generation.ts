@@ -19,8 +19,12 @@ export interface GenerateIdeasParams {
 export interface GeneratedPostIdea {
   id: string;
   title: string;
+  description: string;
+  topic: string;
+  audience: Audience;
   format: InstagramFormat;
   postType: PostType;
+  layout?: string;
   createdAt: Date;
   prompt?: string;
 }
@@ -28,6 +32,8 @@ export interface GeneratedPostIdea {
 export interface GenerateImageParams {
   prompt: string;
   format: InstagramFormat;
+  postType?: PostType;
+  layout?: string;
   postIdeaId?: string;
 }
 
@@ -83,24 +89,50 @@ export function useGenerateIdeas() {
         const rawIdeas = await n8nApi.generatePostIdeas(topicWithMeta);
         
         // Parse n8n pipe-separated response into structured ideas
+        // Format: "Title | Format | PostType | Layout" (4 params) or "Title | Format | PostType" (3 params)
         const ideas: GeneratedPostIdea[] = rawIdeas.map((line, index) => {
           const parts = line.split('|').map(p => p.trim());
-          const [title = '', format = params.format, postType = params.postType] = parts;
+          
+          // Handle both formats: Title|Format|PostType|Layout and Title|Format|PostType
+          let title = '', format = '', postType = '', layout = '';
+          
+          if (parts.length >= 4) {
+            // New format: Title | Format | PostType | Layout
+            [title, format, postType, layout] = parts;
+            console.log(`[N8N] Parsed 4-param idea: title="${title}", format="${format}", postType="${postType}", layout="${layout}"`);
+          } else if (parts.length >= 3) {
+            // Old format: Title | Format | PostType
+            [title, format, postType] = parts;
+            console.log(`[N8N] Parsed 3-param idea: title="${title}", format="${format}", postType="${postType}"`);
+          } else {
+            // Fallback for malformed lines
+            title = parts[0] || `Idea ${index + 1}`;
+            format = params.format;
+            postType = params.postType;
+            console.log(`[N8N] Fallback parsing for line: "${line}"`);
+          }
           
           return {
             id: `n8n-idea-${Date.now()}-${index}`,
             title: title || `Idea ${index + 1}`,
+            description: `Generated ${format} post idea`, // Add description for PostIdea compatibility
+            topic: params.topic, // Add topic for PostIdea compatibility
+            audience: params.audience, // Add audience for PostIdea compatibility
             format: (format as InstagramFormat) || params.format,
             postType: (postType as PostType) || params.postType,
+            layout: layout || undefined, // Include layout if available
             createdAt: new Date(),
             prompt: title, // Use title as prompt for image generation
           };
         });
 
-        return {
+        const response: GenerateIdeasResponse = {
           success: true,
           ideas,
         };
+        // Cache for UI list consumption
+        queryClient.setQueryData(['n8n-ideas'], response);
+        return response;
 
       } catch (error) {
         console.error('[useGenerateIdeas] Error:', error);
@@ -116,10 +148,7 @@ export function useGenerateIdeas() {
         };
       }
     },
-    onSuccess: () => {
-      // Invalidate related queries
-      queryClient.invalidateQueries({ queryKey: ['n8n-ideas'] });
-    },
+    onSuccess: () => {},
   });
 }
 
@@ -133,7 +162,12 @@ export function useGenerateImage() {
   return useMutation({
     mutationFn: async (params: GenerateImageParams): Promise<GenerateImageResponse> => {
       try {
-        const imageUrl = await n8nApi.generateImage(params.prompt, params.format);
+        const imageUrl = await n8nApi.generateImage(
+          params.prompt, 
+          params.format,
+          params.postType || 'organic',
+          params.layout
+        );
         
         const result: GeneratedImageResult = {
           id: `n8n-image-${Date.now()}`,
@@ -214,52 +248,54 @@ export function useUploadImage() {
   });
 }
 
-/**
- * Combined workflow: Generate post ideas + image in one call
- * Optimized for n8n workflow efficiency
- */
-export function useGeneratePost() {
-  return useMutation({
-    mutationFn: async (params: GenerateIdeasParams & { imagePrompt?: string }) => {
-      try {
-        const result = await n8nApi.generatePost(
-          params.topic,
-          params.format,
-          params.postType
-        );
-
-        return {
-          success: true,
-          ideas: result.ideas,
-          imageUrl: result.imageUrl,
-        };
-
-      } catch (error) {
-        console.error('[useGeneratePost] Error:', error);
-        
-        const errorMessage = error instanceof N8nApiError 
-          ? error.message 
-          : 'Failed to generate post';
-
-        throw new Error(errorMessage);
-      }
-    },
-  });
-}
 
 // Legacy compatibility layer - these maintain the same interface but use n8n
 export function useGetIdeas(limit?: number) {
+  const queryClient = useQueryClient();
   return useQuery({
-    queryKey: ['n8n-ideas', limit],
+    queryKey: ['n8n-ideas'],
     queryFn: async (): Promise<GenerateIdeasResponse> => {
-      // Since n8n doesn't store state, we return empty for now
-      // In production, you'd implement state management (localStorage/indexedDB)
-      return {
-        success: true,
-        ideas: [],
-      };
+      const cached = queryClient.getQueryData<GenerateIdeasResponse>(['n8n-ideas']);
+      if (cached) {
+        if (limit && cached.ideas?.length) {
+          return { ...cached, ideas: cached.ideas.slice(0, limit) };
+        }
+        return cached;
+      }
+      return { success: true, ideas: [] };
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Update a specific idea's visual concept
+ */
+export function useUpdateIdea() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (updatedIdea: GeneratedPostIdea): Promise<void> => {
+      // Get current cached data
+      const currentData = queryClient.getQueryData<GenerateIdeasResponse>(['n8n-ideas']);
+      
+      if (currentData?.ideas) {
+        // Update the specific idea
+        const updatedIdeas = currentData.ideas.map(idea => 
+          idea.id === updatedIdea.id ? updatedIdea : idea
+        );
+        
+        // Update cache with modified ideas
+        queryClient.setQueryData(['n8n-ideas'], {
+          ...currentData,
+          ideas: updatedIdeas
+        });
+      }
+    },
+    onSuccess: () => {
+      // Invalidate to trigger re-render
+      queryClient.invalidateQueries({ queryKey: ['n8n-ideas'] });
+    }
   });
 }
 

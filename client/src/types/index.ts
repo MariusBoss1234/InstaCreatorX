@@ -6,6 +6,7 @@ export interface PostIdea {
   format: "feed" | "story" | "reel";
   title: string;
   description: string;
+  layout?: string;
   createdAt: Date;
   prompt?: string;
 }
