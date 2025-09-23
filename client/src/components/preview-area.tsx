@@ -85,11 +85,20 @@ export default function PreviewArea({
         postIdeaId: selectedIdea?.id,
       });
 
-      setGeneratedImageUrl(result.image.imageUrl);
-      toast({
-        title: "Success",
-        description: "Image generated successfully!",
-      });
+      console.log('[Preview Area] Generate image result:', result);
+      console.log('[Preview Area] Result structure:', JSON.stringify(result, null, 2));
+      console.log('[Preview Area] Image URL from result:', result.image?.imageUrl);
+
+      if (result.success && result.image?.imageUrl) {
+        setGeneratedImageUrl(result.image.imageUrl);
+        toast({
+          title: "Success",
+          description: "Image generated successfully!",
+        });
+      } else {
+        console.error('[Preview Area] No valid image URL in result:', result);
+        throw new Error(result.error || 'No image URL received');
+      }
     } catch (error) {
       toast({
         title: "Error",
