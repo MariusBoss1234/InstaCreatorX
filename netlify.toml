@@ -3,8 +3,14 @@
   command = "npm run build"
   # Output directory for Vite build
   publish = "dist"
-  # Functions directory for Netlify Functions
-  functions = "netlify/functions"
+
+[functions]
+  # Functions directory
+  directory = "netlify/functions"
+  # External node modules to include
+  external_node_modules = []
+  # Include all files
+  included_files = ["netlify/functions/**"]
 
 [build.environment]
   NODE_VERSION = "20"
