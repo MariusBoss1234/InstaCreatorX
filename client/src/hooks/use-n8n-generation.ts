@@ -83,9 +83,10 @@ export function useGenerateIdeas() {
   return useMutation({
     mutationFn: async (params: GenerateIdeasParams): Promise<GenerateIdeasResponse> => {
       try {
-        // n8n workflow expects only the pure topic, not format/postType
-        // The workflow generates ideas with different formats and postTypes itself
-        const rawIdeas = await n8nApi.generatePostIdeas(params.topic);
+        // Format topic for n8n: includes format and type info
+        const topicWithMeta = `${params.topic} | ${params.format} | ${params.postType}`;
+        
+        const rawIdeas = await n8nApi.generatePostIdeas(topicWithMeta);
         
         // Parse n8n pipe-separated response into structured ideas
         // Format: "Title | Format | PostType | Layout" (4 params) or "Title | Format | PostType" (3 params)

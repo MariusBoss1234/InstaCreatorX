@@ -11,66 +11,31 @@ export class N8nApiError extends Error {
 }
 
 // Configuration constants
-// Construct full webhook URL: base + /webhook-test/ + id
-const isDevelopment = import.meta.env.DEV;
-const N8N_WEBHOOK_BASE_ENV = import.meta.env.VITE_N8N_WEBHOOK_BASE || 'https://n8n.srv811212.hstgr.cloud';
+const N8N_BASE_URL = import.meta.env.VITE_N8N_WEBHOOK_BASE || 'https://n8n.srv811212.hstgr.cloud/webhook-test';
 const N8N_WEBHOOK_ID = import.meta.env.VITE_N8N_WEBHOOK_ID || '91fcc006-c04e-463a-8acf-7c60577eb5ef';
-
-// In development, use proxy to avoid CORS issues
-// In production, use direct URL
-const N8N_WEBHOOK_BASE = isDevelopment
-  ? '/api/n8n/webhook-test' // Use proxy in development
-  : (N8N_WEBHOOK_BASE_ENV.includes('/webhook-test')
-      ? N8N_WEBHOOK_BASE_ENV // Already contains /webhook-test
-      : `${N8N_WEBHOOK_BASE_ENV}/webhook-test`); // Append /webhook-test
 
 // HTTP client for n8n webhook calls
 class N8nHttpClient {
   constructor(
-    private webhookUrl: string
+    private baseUrl: string,
+    private webhookId: string
   ) {}
 
   private getWebhookUrl(): string {
-    console.log('[N8N] Webhook URL:', this.webhookUrl);
-    return this.webhookUrl;
+    const url = `${this.baseUrl}/${this.webhookId}`;
+    console.log('[N8N] Webhook URL:', url);
+    console.log('[N8N] Base URL:', this.baseUrl);
+    console.log('[N8N] Webhook ID:', this.webhookId);
+    return url;
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
-      let errorText = '';
-      let errorData: any = null;
-      
-      try {
-        const contentType = response.headers.get('content-type');
-        if (contentType?.includes('application/json')) {
-          errorData = await response.json();
-          errorText = JSON.stringify(errorData, null, 2);
-          console.error('[N8N] Error response (JSON):', errorData);
-        } else {
-          errorText = await response.text();
-          console.error('[N8N] Error response (text):', errorText);
-        }
-      } catch (parseError) {
-        errorText = 'Failed to parse error response';
-        console.error('[N8N] Error parsing error response:', parseError);
-      }
-      
-      // Extract more detailed error message if available
-      let errorMessage = `HTTP ${response.status}`;
-      if (errorData?.message) {
-        errorMessage += `: ${errorData.message}`;
-      } else if (errorData?.error?.message) {
-        errorMessage += `: ${errorData.error.message}`;
-      } else if (errorText && errorText.length < 500) {
-        errorMessage += `: ${errorText}`;
-      } else {
-        errorMessage += ': Error in workflow';
-      }
-      
+      const errorText = await response.text().catch(() => 'Unknown error');
       throw new N8nApiError(
-        errorMessage,
+        `HTTP ${response.status}: ${errorText}`,
         response.status,
-        errorData || errorText
+        errorText
       );
     }
 
@@ -158,38 +123,21 @@ export class N8nApiService {
   private client: N8nHttpClient;
 
   constructor() {
-    // Construct full webhook URL: https://n8n.srv811212.hstgr.cloud/webhook-test/91fcc006-c04e-463a-8acf-7c60577eb5ef
-    let webhookUrl: string;
-    
-    if (N8N_WEBHOOK_BASE.endsWith(N8N_WEBHOOK_ID)) {
-      // ID already included in base URL
-      webhookUrl = N8N_WEBHOOK_BASE;
-    } else {
-      // Append webhook ID: base/webhook-test/id
-      webhookUrl = `${N8N_WEBHOOK_BASE}/${N8N_WEBHOOK_ID}`;
-    }
-    
-    console.log('[N8N] Initialized with webhook URL:', webhookUrl);
-    console.log('[N8N] Base:', N8N_WEBHOOK_BASE, 'ID:', N8N_WEBHOOK_ID);
-    this.client = new N8nHttpClient(webhookUrl);
+    this.client = new N8nHttpClient(N8N_BASE_URL, N8N_WEBHOOK_ID);
   }
 
   /**
    * Generate post ideas from topic
    */
   async generatePostIdeas(topic: string): Promise<string[]> {
-    // n8n webhook receives POST body directly
-    // The webhook node wraps it in 'body', so $json.body.message.text accesses it
-    // Send message.text directly - webhook will make it available as body.message.text
     const request = {
+      intent: 'ideas' as const,
       message: {
         text: topic
       }
     };
 
     console.log('[N8N] Sending post ideas request:', request);
-    console.log('[N8N] Topic text:', topic);
-    console.log('[N8N] Request JSON:', JSON.stringify(request, null, 2));
 
     const response = await this.client.post<any, any>(request);
     

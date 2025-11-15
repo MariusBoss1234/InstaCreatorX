@@ -13,19 +13,18 @@ export class N8nApiError extends Error {
 }
 
 // Configuration constants
-// If VITE_N8N_WEBHOOK_BASE is a full URL, use it directly; otherwise construct from base + id
-const N8N_WEBHOOK_BASE = import.meta.env.VITE_N8N_WEBHOOK_BASE || 'https://n8n.srv811212.hstgr.cloud/webhook-test';
-const N8N_WEBHOOK_ID = import.meta.env.VITE_N8N_WEBHOOK_ID || '91fcc006-c04e-463a-8acf-7c60577eb5ef';
+const N8N_BASE_URL = import.meta.env.VITE_N8N_WEBHOOK_BASE || 'http://localhost:5678/webhook';
+const N8N_WEBHOOK_ID = import.meta.env.VITE_N8N_WEBHOOK_ID || 'test-webhook';
 
 // HTTP client for n8n webhook calls
 class N8nHttpClient {
   constructor(
-    private webhookUrl: string
+    private baseUrl: string,
+    private webhookId: string
   ) {}
 
   private getWebhookUrl(): string {
-    console.log('[N8N] Webhook URL:', this.webhookUrl);
-    return this.webhookUrl;
+    return `${this.baseUrl}/${this.webhookId}`;
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {
@@ -122,20 +121,7 @@ export class N8nApiService {
   private client: N8nHttpClient;
 
   constructor() {
-    // Construct webhook URL
-    // If VITE_N8N_WEBHOOK_BASE is already a full webhook URL, use it directly
-    // Otherwise, append the webhook ID
-    let webhookUrl: string;
-    if (N8N_WEBHOOK_BASE.includes('/webhook-test') || N8N_WEBHOOK_BASE.includes('/webhook/')) {
-      // Base URL is already a complete webhook URL
-      webhookUrl = N8N_WEBHOOK_BASE;
-    } else {
-      // Construct URL from base + id
-      webhookUrl = `${N8N_WEBHOOK_BASE}/${N8N_WEBHOOK_ID}`;
-    }
-    
-    console.log('[N8N] Initialized with webhook URL:', webhookUrl);
-    this.client = new N8nHttpClient(webhookUrl);
+    this.client = new N8nHttpClient(N8N_BASE_URL, N8N_WEBHOOK_ID);
   }
 
   /**
