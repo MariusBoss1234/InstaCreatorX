@@ -17,8 +17,8 @@
 
 # Redirect API calls to Netlify Functions
 [[redirects]]
-  from = "/api/n8n/webhook-test/:id"
-  to = "/.netlify/functions/n8n-proxy?id=:id"
+  from = "/api/n8n/webhook-test/*"
+  to = "/.netlify/functions/n8n-proxy/:splat"
   status = 200
   force = true
 

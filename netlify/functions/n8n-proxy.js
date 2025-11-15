@@ -30,8 +30,15 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Extract webhook ID from query parameter
-    const webhookId = event.queryStringParameters?.id;
+    // Extract webhook ID from path (via Netlify redirect splat)
+    // Netlify redirects /api/n8n/webhook-test/* to /.netlify/functions/n8n-proxy/:splat
+    // The :splat becomes the path parameter
+    const pathParts = event.path.split('/').filter(p => p);
+    const webhookId = pathParts[pathParts.length - 1] || event.queryStringParameters?.id;
+    
+    console.log('[N8N Proxy] Event path:', event.path);
+    console.log('[N8N Proxy] Path parts:', pathParts);
+    console.log('[N8N Proxy] Extracted webhook ID:', webhookId);
     
     if (!webhookId) {
       return {
@@ -40,7 +47,13 @@ exports.handler = async (event, context) => {
           'Access-Control-Allow-Origin': '*',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ error: 'Missing webhook ID parameter' }),
+        body: JSON.stringify({ 
+          error: 'Missing webhook ID parameter',
+          debug: {
+            path: event.path,
+            query: event.queryStringParameters
+          }
+        }),
       };
     }
 
