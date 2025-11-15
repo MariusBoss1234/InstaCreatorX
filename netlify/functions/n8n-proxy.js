@@ -59,7 +59,7 @@ exports.handler = async (event, context) => {
 
     // Use production webhook URL (not webhook-test)
     // webhook-test is only for testing in n8n UI, webhook is for production
-    const webhookUrl = `${N8N_WEBHOOK_BASE}/webhook/${webhookId}`;
+    const webhookUrl = `${N8N_WEBHOOK_BASE}/webhook-test/${webhookId}`;
     console.log('[N8N Proxy Function] Forwarding to:', webhookUrl);
     console.log('[N8N Proxy Function] Request body:', event.body);
 
