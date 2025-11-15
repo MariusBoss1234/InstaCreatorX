@@ -136,7 +136,7 @@ export default function IdeaGenerator({ format, onIdeaSelect, selectedIdea, onId
               id="topic"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g., skincare, beauty tips..."
+              placeholder="e.g., Personaleinsatzplanung, Arbeitszeiterfassung etc."
               className="mt-2 h-11"
               data-testid="input-topic"
             />

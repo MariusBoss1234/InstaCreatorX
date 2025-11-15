@@ -36,5 +36,28 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    proxy: {
+      '/api/n8n': {
+        target: 'https://n8n.srv811212.hstgr.cloud',
+        changeOrigin: true,
+        rewrite: (path) => {
+          // Remove /api/n8n prefix, keep the rest of the path
+          // /api/n8n/webhook-test -> /webhook-test
+          const rewritten = path.replace(/^\/api\/n8n/, '');
+          console.log('[Vite Proxy] Rewriting:', path, '->', rewritten);
+          return rewritten;
+        },
+        secure: true,
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            console.log('[Vite Proxy] Request:', req.method, req.url);
+            console.log('[Vite Proxy] Target URL:', proxyReq.path);
+          });
+          proxy.on('error', (err, req) => {
+            console.error('[Vite Proxy] Error proxying', req.url, ':', err.message);
+          });
+        },
+      },
+    },
   },
 });
