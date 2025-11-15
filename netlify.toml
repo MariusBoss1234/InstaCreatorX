@@ -2,7 +2,7 @@
   # Build command for the client
   command = "npm run build"
   # Output directory for Vite build
-  publish = "dist"
+  publish = "dist/public"
 
 [functions]
   # Functions directory
