@@ -12,17 +12,11 @@ export class N8nApiError extends Error {
 
 // Configuration constants
 // Construct full webhook URL: base + /webhook-test/ + id
-const isDevelopment = import.meta.env.DEV;
-const N8N_WEBHOOK_BASE_ENV = import.meta.env.VITE_N8N_WEBHOOK_BASE || 'https://n8n.srv811212.hstgr.cloud';
 const N8N_WEBHOOK_ID = import.meta.env.VITE_N8N_WEBHOOK_ID || '91fcc006-c04e-463a-8acf-7c60577eb5ef';
 
-// In development, use proxy to avoid CORS issues
-// In production, use direct URL
-const N8N_WEBHOOK_BASE = isDevelopment
-  ? '/api/n8n/webhook-test' // Use proxy in development
-  : (N8N_WEBHOOK_BASE_ENV.includes('/webhook-test')
-      ? N8N_WEBHOOK_BASE_ENV // Already contains /webhook-test
-      : `${N8N_WEBHOOK_BASE_ENV}/webhook-test`); // Append /webhook-test
+// Always use proxy endpoint to avoid CORS issues (works in both dev and production)
+// The proxy endpoint is handled by the Express server
+const N8N_WEBHOOK_BASE = '/api/n8n/webhook-test';
 
 // HTTP client for n8n webhook calls
 class N8nHttpClient {
