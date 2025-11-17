@@ -3,8 +3,6 @@
   "version": "1.0.0",
   "description": "Dependencies for Netlify Functions",
   "dependencies": {
-    "busboy": "^1.6.0",
-    "form-data": "^4.0.0",
-    "node-fetch": "^2.7.0"
+    "busboy": "^1.6.0"
   }
 }

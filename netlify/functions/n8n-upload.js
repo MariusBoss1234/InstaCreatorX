@@ -2,7 +2,6 @@
 // Verarbeitet multipart/form-data korrekt ohne doppelte Base64-Kodierung
 
 const busboy = require('busboy');
-const FormData = require('form-data');
 
 const N8N_WEBHOOK_BASE = process.env.VITE_N8N_WEBHOOK_BASE || process.env.N8N_WEBHOOK_BASE || 'https://n8n.srv811212.hstgr.cloud';
 
@@ -146,51 +145,77 @@ exports.handler = async (event, context) => {
             return;
           }
 
-          // FormData für n8n erstellen
-          const form = new FormData();
+          console.log('[N8N Upload] ===== PREPARING DATA FOR N8N =====');
           
-          console.log('[N8N Upload] ===== CREATING FORMDATA FOR N8N =====');
-          
-          // WICHTIG: Buffer direkt anhängen als "data" (n8n Binary Data name)
-          // n8n webhook erwartet ein file field, speichert es als "data" oder "data0"
-          form.append('data', fileData, {
-            filename: fileInfo.filename,
-            contentType: fileInfo.mimeType,
-            knownLength: fileData.length
-          });
-          
-          console.log('[N8N Upload] Appended data (binary):', {
-            filename: fileInfo.filename,
-            contentType: fileInfo.mimeType,
-            size: fileData.length
-          });
-
-          // Zusätzliche Felder als separate fields (nicht in message!)
+          // Parse message field
+          let caption = '';
           if (fields.message) {
             try {
               const messageData = JSON.parse(fields.message);
-              form.append('caption', messageData.caption || '');
-              console.log('[N8N Upload] Appended caption:', messageData.caption);
+              caption = messageData.caption || '';
             } catch (e) {
               console.log('[N8N Upload] Could not parse message field');
             }
           }
-          
-          if (fields.intent) {
-            form.append('intent', fields.intent);
-            console.log('[N8N Upload] Appended intent:', fields.intent);
-          }
 
+          // Sende als multipart/form-data mit manuell konstruiertem Boundary
+          const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
+          const parts = [];
+          
+          // Part 1: Binary file als "data"
+          parts.push(
+            `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="data"; filename="${fileInfo.filename}"\r\n` +
+            `Content-Type: ${fileInfo.mimeType}\r\n\r\n`
+          );
+          parts.push(fileData);
+          parts.push('\r\n');
+          
+          // Part 2: Caption
+          if (caption) {
+            parts.push(
+              `--${boundary}\r\n` +
+              `Content-Disposition: form-data; name="caption"\r\n\r\n` +
+              `${caption}\r\n`
+            );
+          }
+          
+          // Part 3: Intent
+          if (fields.intent) {
+            parts.push(
+              `--${boundary}\r\n` +
+              `Content-Disposition: form-data; name="intent"\r\n\r\n` +
+              `${fields.intent}\r\n`
+            );
+          }
+          
+          // Closing boundary
+          parts.push(`--${boundary}--\r\n`);
+          
+          // Combine all parts
+          const bodyParts = [];
+          for (const part of parts) {
+            if (typeof part === 'string') {
+              bodyParts.push(Buffer.from(part, 'utf-8'));
+            } else {
+              bodyParts.push(part);
+            }
+          }
+          const body = Buffer.concat(bodyParts);
+          
           console.log('[N8N Upload] ===== SENDING TO N8N =====');
           console.log('[N8N Upload] URL:', webhookUrl);
-          console.log('[N8N Upload] FormData headers:', form.getHeaders());
+          console.log('[N8N Upload] Body size:', body.length, 'bytes');
+          console.log('[N8N Upload] Content-Type:', `multipart/form-data; boundary=${boundary}`);
 
-          // An n8n senden mit node-fetch oder globalem fetch
-          const fetch = globalThis.fetch || require('node-fetch');
+          // An n8n senden mit manuellem multipart body
           const n8nResponse = await fetch(webhookUrl, {
             method: 'POST',
-            body: form,
-            headers: form.getHeaders()
+            body: body,
+            headers: {
+              'Content-Type': `multipart/form-data; boundary=${boundary}`,
+              'Content-Length': body.length.toString()
+            }
           });
 
           console.log('[N8N Upload] ===== N8N RESPONSE =====');
