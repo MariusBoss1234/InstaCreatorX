@@ -269,61 +269,81 @@ export class N8nApiService {
    */
   async uploadAndProcessImage(file: File, caption?: string): Promise<string> {
     try {
+      // Use dedicated upload endpoint to avoid Base64 encoding issues
+      const uploadUrl = `/.netlify/functions/n8n-upload?id=${N8N_WEBHOOK_ID}`;
+      
       const formData = new FormData();
       
-      // Create structure for n8n workflow
+      // Add the actual file as "photo" (n8n expects this name)
+      formData.append('photo', file, file.name);
+
+      // Create message structure for n8n
       const messageData = {
-        message: {
-          photo: [{
-            file_id: `frontend_upload_${Date.now()}`,
-            file_unique_id: `unique_${Date.now()}`,
-            width: 1024,
-            height: 1024,
-            file_size: file.size
-          }],
-          caption: caption || ''
-        }
+        photo: [{
+          file_id: `frontend_upload_${Date.now()}`,
+          file_unique_id: `unique_${Date.now()}`,
+          width: 1024,
+          height: 1024,
+          file_size: file.size
+        }],
+        caption: caption || ''
       };
 
-      // Add the message structure
-      formData.append('message', JSON.stringify(messageData.message));
+      // Add the message structure as JSON string
+      formData.append('message', JSON.stringify(messageData));
       
-      // Add the actual file
-      formData.append('file', file, file.name);
-
       // Add intent for n8n routing
       formData.append('intent', 'upload');
 
       console.log('[N8N] === UPLOAD REQUEST DEBUG ===');
+      console.log('[N8N] Upload URL:', uploadUrl);
       console.log('[N8N] File details:', {
         name: file.name,
         size: file.size,
+        sizeInMB: (file.size / 1024 / 1024).toFixed(2) + ' MB',
         type: file.type,
         lastModified: file.lastModified
       });
       console.log('[N8N] Caption:', caption);
 
-      const response = await this.client.postFormData<any>(formData);
-      
+      // Use direct fetch to upload endpoint (bypasses the normal client)
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData,
+        // Don't set Content-Type - browser will set it with correct boundary
+      });
+
       console.log('[N8N] === UPLOAD RESPONSE DEBUG ===');
-      console.log('[N8N] Full response object:', response);
-      console.log('[N8N] Response type:', typeof response);
-      console.log('[N8N] Response keys:', Object.keys(response || {}));
-      console.log('[N8N] Response JSON:', JSON.stringify(response, null, 2));
+      console.log('[N8N] Response status:', response.status);
+      console.log('[N8N] Response status text:', response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[N8N] Error response:', errorText);
+        throw new N8nApiError(`Upload failed: ${response.status} ${errorText}`, response.status);
+      }
+
+      const result = await response.json();
+      
+      console.log('[N8N] Response data:', result);
+      console.log('[N8N] Response type:', typeof result);
+      console.log('[N8N] Response keys:', Object.keys(result || {}));
+      console.log('[N8N] Response JSON:', JSON.stringify(result, null, 2));
       
       // Extract URL from response
-      const processedUrl = this.extractImageUrl(response);
+      const processedUrl = this.extractImageUrl(result.data || result);
       
       if (!processedUrl) {
         console.error('[N8N] === URL EXTRACTION FAILED ===');
         console.error('[N8N] Could not extract URL from response');
         
         // Check if response is empty
-        if (Array.isArray(response) && (response.length === 0 || Object.keys(response[0] || {}).length === 0)) {
+        const data = result.data || result;
+        if (Array.isArray(data) && (data.length === 0 || Object.keys(data[0] || {}).length === 0)) {
           throw new N8nApiError('Workflow completed but returned no data. Check n8n workflow configuration.');
         }
         
-        throw new N8nApiError(`No processed image data in response. Response structure: ${JSON.stringify(response).substring(0, 200)}...`);
+        throw new N8nApiError(`No processed image data in response. Response structure: ${JSON.stringify(result).substring(0, 200)}...`);
       }
       
       console.log('[N8N] === UPLOAD SUCCESS ===');

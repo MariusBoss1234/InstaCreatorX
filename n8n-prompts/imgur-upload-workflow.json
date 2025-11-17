@@ -1,0 +1,114 @@
+{
+  "name": "Instagram Image Upload to Imgur",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "91fcc006-c04e-463a-8acf-7c60577eb5ef",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryData": true
+        }
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "91fcc006-c04e-463a-8acf-7c60577eb5ef"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Binary-Daten aus data0 verarbeiten\nconst item = $input.first();\nconst binaryData = item.binary?.data0;\n\nif (!binaryData) {\n  throw new Error(\"Keine Binary-Daten gefunden in data0. Verfügbare Keys: \" + Object.keys(item.binary || {}).join(', '));\n}\n\nconsole.log(\"===== BINARY DATA DEBUG =====\");\nconsole.log(\"Binary Keys:\", Object.keys(item.binary || {}));\nconsole.log(\"MIME Type:\", binaryData.mimeType);\nconsole.log(\"File Name:\", binaryData.fileName);\n\n// Buffer erstellen\nlet buffer;\ntry {\n  buffer = Buffer.from(binaryData.data, 'base64');\n  console.log(\"Decoded Buffer Size:\", (buffer.length / 1024 / 1024).toFixed(2), \"MB\");\n} catch (error) {\n  throw new Error(\"Binary-Daten sind kein gültiger Base64-String: \" + error.message);\n}\n\n// Magic Bytes prüfen\nconst magicBytes = buffer.slice(0, 4).toString('hex');\nconsole.log(\"Magic Bytes (HEX):\", magicBytes);\n\nconst isJPEG = magicBytes.startsWith('ffd8ff');\nconst isPNG = magicBytes === '89504e47';\nconst isGIF = magicBytes.startsWith('474946');\nconst isWebP = magicBytes === '52494646';\nconst isValidImage = isJPEG || isPNG || isGIF || isWebP;\n\nconsole.log(\"Is Valid Image:\", isValidImage, { isJPEG, isPNG, isGIF, isWebP });\n\nif (!isValidImage) {\n  console.log(\"WARNING: Versuche doppelte Dekodierung...\");\n  try {\n    const doubleDecoded = Buffer.from(buffer.toString('utf-8'), 'base64');\n    const doubleMagic = doubleDecoded.slice(0, 4).toString('hex');\n    const isDoubleValid = doubleMagic.startsWith('ffd8ff') || doubleMagic === '89504e47' || doubleMagic.startsWith('474946');\n    \n    if (isDoubleValid) {\n      console.log(\"✓ Doppelte Base64-Kodierung erkannt!\");\n      buffer = doubleDecoded;\n    } else {\n      throw new Error(\"Ungültige Bilddatei - Magic Bytes: \" + magicBytes);\n    }\n  } catch (e) {\n    throw new Error(\"Dekodierung fehlgeschlagen: \" + e.message);\n  }\n}\n\n// Größenlimit prüfen\nconst maxSize = 50 * 1024 * 1024;\nif (buffer.length > maxSize) {\n  throw new Error(`Datei zu groß: ${(buffer.length / 1024 / 1024).toFixed(2)} MB (max 50 MB)`);\n}\n\nconst mimeType = binaryData.mimeType || 'image/jpeg';\n\nconsole.log(\"✓ Validation complete - Size:\", (buffer.length / 1024 / 1024).toFixed(2), \"MB\");\n\nreturn {\n  json: {\n    fileName: binaryData.fileName || 'image.jpg',\n    mimeType: mimeType,\n    sizeInMB: (buffer.length / 1024 / 1024).toFixed(2),\n    isValid: true,\n    format: isJPEG ? 'JPEG' : isPNG ? 'PNG' : isGIF ? 'GIF' : 'WebP'\n  },\n  binary: {\n    data: {\n      data: buffer.toString('base64'),\n      mimeType: mimeType,\n      fileName: binaryData.fileName || 'image.jpg',\n      fileExtension: binaryData.fileExtension || 'jpg'\n    }\n  }\n};"
+      },
+      "name": "Code - Binary Validation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.imgur.com/3/image",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "image",
+              "inputDataFieldName": "data",
+              "parameterType": "formBinaryData"
+            },
+            {
+              "name": "type",
+              "value": "file"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "HTTP Request - Imgur Upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1",
+          "name": "Imgur API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"data\": { \"link\": $json.data.link } } }}"
+      },
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code - Binary Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Binary Validation": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Imgur Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Imgur Upload": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
