@@ -235,32 +235,23 @@ export class N8nApiService {
     const response = await this.client.post<any, any>(request);
     
     console.log('[N8N] Image generation response:', response);
+    console.log('[N8N] Response type:', typeof response);
+    console.log('[N8N] Is array:', Array.isArray(response));
     
     if (response?.error) {
       throw new N8nApiError(`Image generation failed: ${response.error}`);
     }
 
-    // Extract image URL from various possible response formats
-    const pickImageUrl = (obj: any): string => {
-      if (!obj) return '';
-      if (typeof obj === 'string') return obj;
-      if (obj.url) return obj.url;
-      if (obj.data?.link) return obj.data.link;
-      if (obj.data?.webContentLink) {
-        const match = obj.data.webContentLink.match(/[-\w]{25,}/);
-        if (match) return `https://lh3.googleusercontent.com/d/${match[0]}=w1080-rj`;
-      }
-      if (obj.imageUrl) return obj.imageUrl;
-      if (obj.data?.url) return obj.data.url;
-      return '';
-    };
-
-    let imageUrl = Array.isArray(response) ? pickImageUrl(response[0]) : pickImageUrl(response);
+    // Use the same extraction logic as uploadAndProcessImage
+    const imageUrl = this.extractImageUrl(response);
 
     if (!imageUrl) {
+      console.error('[N8N] Failed to extract image URL from response');
+      console.error('[N8N] Response structure:', JSON.stringify(response, null, 2).substring(0, 500));
       throw new N8nApiError('No image URL in response');
     }
 
+    console.log('[N8N] Successfully extracted image URL:', imageUrl);
     return imageUrl;
   }
 
@@ -370,7 +361,7 @@ export class N8nApiService {
       return '';
     }
     
-    console.log('[N8N] Extracting URL from response:', JSON.stringify(response, null, 2));
+    console.log('[N8N] Extracting URL from response:', JSON.stringify(response, null, 2).substring(0, 300));
     
     // Handle array responses (typical n8n format)
     const data = Array.isArray(response) ? response[0] : response;
@@ -379,9 +370,21 @@ export class N8nApiService {
       return '';
     }
     
-    // Handle Imgur response format: { success: true, data: { link: "..." } }
+    // n8n Response Node Structure: [{ status: 200, success: true, data: { link: "..." } }]
+    if (data.status === 200 && data.data?.link) {
+      console.log('[N8N] Found Imgur link in n8n response structure:', data.data.link);
+      return data.data.link;
+    }
+    
+    // Alternative: { success: true, data: { link: "..." } }
     if (data.success && data.data?.link) {
-      console.log('[N8N] Found Imgur link:', data.data.link);
+      console.log('[N8N] Found Imgur link (success structure):', data.data.link);
+      return data.data.link;
+    }
+    
+    // Direct Imgur response: { data: { link: "..." } }
+    if (data.data?.link) {
+      console.log('[N8N] Found nested data.link:', data.data.link);
       return data.data.link;
     }
     
@@ -389,12 +392,6 @@ export class N8nApiService {
     if (data.link) {
       console.log('[N8N] Found direct link:', data.link);
       return data.link;
-    }
-    
-    // Handle nested data.link
-    if (data.data?.link) {
-      console.log('[N8N] Found nested data.link:', data.data.link);
-      return data.data.link;
     }
     
     // Handle other common URL properties
