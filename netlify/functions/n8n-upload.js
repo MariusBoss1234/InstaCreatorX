@@ -82,7 +82,6 @@ exports.handler = async (event, context) => {
 
         file.on('data', (chunk) => {
           chunks.push(chunk);
-          console.log('[N8N Upload] Received chunk:', chunk.length, 'bytes');
         });
 
         file.on('end', () => {
@@ -152,24 +151,35 @@ exports.handler = async (event, context) => {
           
           console.log('[N8N Upload] ===== CREATING FORMDATA FOR N8N =====');
           
-          // WICHTIG: Buffer direkt anhängen, NICHT als Base64!
-          form.append('photo', fileData, {
+          // WICHTIG: Buffer direkt anhängen als "data" (n8n Binary Data name)
+          // n8n webhook erwartet ein file field, speichert es als "data" oder "data0"
+          form.append('data', fileData, {
             filename: fileInfo.filename,
             contentType: fileInfo.mimeType,
             knownLength: fileData.length
           });
           
-          console.log('[N8N Upload] Appended photo:', {
+          console.log('[N8N Upload] Appended data (binary):', {
             filename: fileInfo.filename,
             contentType: fileInfo.mimeType,
             size: fileData.length
           });
 
-          // Zusätzliche Felder
-          Object.keys(fields).forEach(key => {
-            form.append(key, fields[key]);
-            console.log('[N8N Upload] Appended field:', key);
-          });
+          // Zusätzliche Felder als separate fields (nicht in message!)
+          if (fields.message) {
+            try {
+              const messageData = JSON.parse(fields.message);
+              form.append('caption', messageData.caption || '');
+              console.log('[N8N Upload] Appended caption:', messageData.caption);
+            } catch (e) {
+              console.log('[N8N Upload] Could not parse message field');
+            }
+          }
+          
+          if (fields.intent) {
+            form.append('intent', fields.intent);
+            console.log('[N8N Upload] Appended intent:', fields.intent);
+          }
 
           console.log('[N8N Upload] ===== SENDING TO N8N =====');
           console.log('[N8N Upload] URL:', webhookUrl);
